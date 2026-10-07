@@ -28,11 +28,11 @@ if "__R7__" in html or "__R6__" in html:
 
 (ROOT/"index.html").write_text(html,encoding="utf-8")
 manifest={
-    "version":"1.0",
-    "generated_from":["site_template.html","r7_meta.json","r6_meta.json"],
+    "version":"1.1",
+    "generated_from":["site_template.html","r7_meta.json","r6_meta.json","r7_question_map.json","r6_questions/"],
     "question_counts":{"R7":60,"R6":60,"total":120},
-    "r7_source":"日本下水道事業団 令和7年度 第51回 第3種 公式問題PDF",
-    "r6_source":"保存実問題アーカイブ。正答60問照合済み",
+    "r7_source":"日本下水道事業団 令和7年度 第51回 第3種 公式問題PDF（1問単位ビュー生成）",
+    "r6_source":"保存実問題アーカイブ（1問単位ビュー生成）。正答60問照合済み",
     "generated_file":"index.html"
 }
 (ROOT/"site_manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
