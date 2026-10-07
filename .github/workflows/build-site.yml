@@ -8,9 +8,11 @@ on:
       - 'site_template.html'
       - 'r7_meta.json'
       - 'r6_meta.json'
-      - 'r7_page_map.json'
       - 'r6_build_audit.json'
       - 'r6_archive.html'
+      - 'r7_mondai_3syu_official.pdf'
+      - 'r7_pages/**'
+      - 'scripts/build_question_views.py'
       - 'scripts/build_site.py'
       - 'scripts/validate_site.py'
 
@@ -28,10 +30,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build v1.0
+      - name: Install view builder dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+          python3 -m pip install --quiet beautifulsoup4 pillow
+
+      - name: Build one-question views
+        run: python3 scripts/build_question_views.py
+
+      - name: Build v1.1
         run: python3 scripts/build_site.py
 
-      - name: Validate 120 questions and sources
+      - name: Validate 120 questions and one-question views
         run: python3 scripts/validate_site.py
 
       - name: Validate JavaScript syntax
@@ -48,14 +59,14 @@ jobs:
           node --check .site-check.js
           rm .site-check.js
 
-      - name: Commit generated site
+      - name: Commit generated site and views
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html site_manifest.json
+          git add index.html site_manifest.json r7_questions r6_questions r7_question_map.json question_view_audit.json
           if git diff --cached --quiet; then
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.0"
+          git commit -m "Build 下3 trainer v1.1 one-question views"
           git push
