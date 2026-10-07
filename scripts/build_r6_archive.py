@@ -97,7 +97,7 @@ answer_text="\n".join(answer_soup.stripped_strings)
 found={}
 for m in re.finditer(r"問\s*0?([1-9]|[1-5][0-9]|60)\s*\)\s*([1-4])",answer_text):
     n=int(m.group(1)); ans=int(m.group(2))
-    if 1<=n<=60: found[n]=ans
+    if 1<=n<=60 and n not in found: found[n]=ans
 answer_warning=None
 if len(found)!=60:
     answer_warning=f"Expected 60 answers from archive, got {len(found)}"
