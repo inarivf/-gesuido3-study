@@ -1,0 +1,55 @@
+name: Fetch official R7 exam PDF
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fetch-official-r7.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download official PDF from JSWA
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -A "Mozilla/5.0" \
+            "https://www.jswa.go.jp/kentei/pdf/r7mondai_seito/mondai_3syu.pdf" \
+            -o r7_mondai_3syu_official.pdf
+          test -s r7_mondai_3syu_official.pdf
+          file r7_mondai_3syu_official.pdf
+          sha256sum r7_mondai_3syu_official.pdf
+
+      - name: Add source note
+        run: |
+          cat > R7_OFFICIAL_SOURCE.md <<'EOF'
+          # 令和7年度 第51回 下水道技術検定 第3種 公式問題
+
+          出典: 地方共同法人 日本下水道事業団 (JS)
+          https://www.jswa.go.jp/kentei/pdf/r7mondai_seito/mondai_3syu.pdf
+
+          JSホームページのコンテンツ利用条件（公共データ利用規約 第1.0版に準拠）に基づき、
+          出典を明示して教材内で利用します。
+
+          このリポジトリの解説・UIは独自作成です。
+          EOF
+
+      - name: Commit PDF if changed
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add r7_mondai_3syu_official.pdf R7_OFFICIAL_SOURCE.md
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Fetch official R7 exam PDF from JSWA"
+          git push
