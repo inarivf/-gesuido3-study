@@ -1,4 +1,4 @@
-name: Fetch and render official R7 exam
+name: Patch official R7 viewer
 
 on:
   workflow_dispatch:
@@ -10,135 +10,23 @@ permissions:
   contents: write
 
 jobs:
-  build-official-pages:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install PDF tools
+      - name: Patch site
+        run: python3 scripts/patch_site.py
+
+      - name: Commit site
         run: |
-          sudo apt-get update
-          sudo apt-get install -y poppler-utils
-
-      - name: Download official PDF from JSWA
-        run: |
-          set -euo pipefail
-          curl --fail --location --retry 3 --retry-delay 2             -A "Mozilla/5.0"             "https://www.jswa.go.jp/kentei/pdf/r7mondai_seito/mondai_3syu.pdf"             -o r7_mondai_3syu_official.pdf
-          test -s r7_mondai_3syu_official.pdf
-          pdfinfo r7_mondai_3syu_official.pdf | grep '^Pages:'
-
-      - name: Render pages for iPhone and build question map
-        run: |
-          set -euo pipefail
-          rm -rf r7_pages
-          mkdir -p r7_pages /tmp/r7text
-          pdftoppm -jpeg -r 135 -jpegopt quality=82 r7_mondai_3syu_official.pdf /tmp/r7page
-          python3 - <<'PY'
-          import glob, os, re, json, subprocess
-          imgs=sorted(glob.glob('/tmp/r7page-*.jpg'), key=lambda p:int(re.search(r'-(\d+)\.jpg$',p).group(1)))
-          pages=len(imgs)
-          for i,p in enumerate(imgs,1):
-              os.rename(p, f'r7_pages/page-{i:03d}.jpg')
-          qmap={}
-          page_questions={}
-          for page in range(1,pages+1):
-              out=f'/tmp/r7text/page-{page:03d}.txt'
-              subprocess.run(['pdftotext','-f',str(page),'-l',str(page),'-layout','r7_mondai_3syu_official.pdf',out],check=True)
-              txt=open(out,encoding='utf-8',errors='ignore').read()
-              nums=[]
-              for m in re.finditer(r'問\s*([0-9]{1,2})\b',txt):
-                  n=int(m.group(1))
-                  if 1<=n<=60 and n not in nums:
-                      nums.append(n)
-              page_questions[str(page)]=nums
-              for n in nums:
-                  qmap[str(n)]=page
-          # Fill any missing question by nearest discovered neighbors.
-          known=sorted((int(q),p) for q,p in qmap.items())
-          for q in range(1,61):
-              if str(q) in qmap:
-                  continue
-              before=[(n,p) for n,p in known if n<q]
-              after=[(n,p) for n,p in known if n>q]
-              if before and after:
-                  nb,pb=before[-1]; na,pa=after[0]
-                  est=round(pb+(pa-pb)*(q-nb)/(na-nb))
-              elif before:
-                  est=before[-1][1]
-              elif after:
-                  est=after[0][1]
-              else:
-                  est=max(2,min(pages,2+(q-1)//2))
-              qmap[str(q)]=int(est)
-          with open('r7_page_map.json','w',encoding='utf-8') as f:
-              json.dump({"source":"JSWA official R7 3rd-class exam","pages":pages,"question_to_page":qmap,"detected":page_questions},f,ensure_ascii=False,indent=2)
-          print("pages",pages,"mapped",len(qmap))
-          PY
-
-      - name: Patch site to use local official page images
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          pairs=[
-            ('v0.6','v0.7'),
-            ('.pdfwrap iframe{display:block;width:100%;height:58vh;min-height:480px;border:0}', '.pdfwrap img{display:block;width:100%;height:auto;border:0;background:#fff}'),
-            ('@media(max-width:620px){.pdfwrap iframe{height:52vh;min-height:420px}.answers', '@media(max-width:620px){.answers'),
-            ('href="https://www.jswa.go.jp/kentei/pdf/r7mondai_seito/mondai_3syu.pdf" target="_blank" rel="noopener">公式PDFを別画面で開く', 'href="./r7_mondai_3syu_official.pdf" target="_blank" rel="noopener">公式PDFを別画面で開く'),
-            ('<iframe id="officialPdf" title="令和7年度 第3種 公式問題PDF" src=""></iframe>', '<a id="pageLink" href="./r7_pages/page-002.jpg" target="_blank" rel="noopener"><img id="officialPage" alt="令和7年度 第3種 公式問題ページ" src="./r7_pages/page-002.jpg"></a>'),
-            ('※GoogleのPDFビューア経由で公式問題を表示しています。表示されない場合は上の「公式PDFを別画面で開く」を押してください。', '※日本下水道事業団の公式問題PDFを、スマホ表示用にページ画像へ変換して表示しています。画像をタップすると拡大できます。'),
-            ('const PDF="https://www.jswa.go.jp/kentei/pdf/r7mondai_seito/mondai_3syu.pdf";\nconst PDF_VIEWER="https://docs.google.com/gview?embedded=1&url="+encodeURIComponent(PDF);', 'const PDF="./r7_mondai_3syu_official.pdf";\nlet PAGE_MAP={};'),
-            (" document.getElementById('officialPdf').src=PDF_VIEWER;", " const page=PAGE_MAP[String(x.q)]||approxPage(x.q);\n const pageSrc='./r7_pages/page-'+String(page).padStart(3,'0')+'.jpg';\n document.getElementById('officialPage').src=pageSrc;\n document.getElementById('officialPage').alt='令和7年度 第3種 公式問題 問'+x.q+' 掲載ページ';\n document.getElementById('pageLink').href=pageSrc;"),
-            ('<div class="notice"><b>問題本文・図表は日本下水道事業団の公式PDFをそのまま表示します。</b><br>このサイト側で問題文を作り替えません。下のPDFで「問○」を読んで、1〜4を押してください。</div>', '<div class="notice"><b>問題本文・図表は日本下水道事業団の令和7年度 第51回 第3種・公式問題です。</b><br>このサイト側で問題文を作り替えません。公式PDFを表示用画像へ変換し、問番号に対応する本物のページを表示します。<br><span class="muted">出典：地方共同法人 日本下水道事業団「令和7年度 第51回 下水道技術検定 問題 第3種」</span></div>')
-          ]
-          for a,b in pairs:
-              if a not in s:
-                  print('WARN missing:', a[:80])
-              s=s.replace(a,b)
-          old="""(function init(){
- const s=document.getElementById('qSelect');
- QUESTIONS.forEach(x=>{const o=document.createElement('option');o.value=x.q;o.textContent=x.q;s.appendChild(o)});
- updateStat();render();
-})();"""
-          new="""(async function init(){
- const s=document.getElementById('qSelect');
- QUESTIONS.forEach(x=>{const o=document.createElement('option');o.value=x.q;o.textContent=x.q;s.appendChild(o)});
- try{
-   const r=await fetch('./r7_page_map.json',{cache:'no-store'});
-   if(r.ok){const j=await r.json();PAGE_MAP=j.question_to_page||{}}
- }catch(e){}
- updateStat();render();
-})();"""
-          s=s.replace(old,new)
-          p.write_text(s,encoding='utf-8')
-          PY
-
-      - name: Add source note
-        run: |
-          cat > R7_OFFICIAL_SOURCE.md <<'EOF'
-          # 令和7年度 第51回 下水道技術検定 第3種 公式問題
-
-          出典：地方共同法人 日本下水道事業団
-          https://www.jswa.go.jp/kentei/pdf/r7mondai_seito/mondai_3syu.pdf
-
-          JSホームページ掲載コンテンツの利用条件（公共データ利用規約 第1.0版準拠）に基づき、
-          出典を明示したうえで、公式PDFをページ画像へ変換して学習画面に表示しています。
-
-          ページ画像は上記公式PDFを表示用に変換したものです。
-          解説・採点UIは本教材で独自に作成しています。
-          EOF
-
-      - name: Commit official assets
-        run: |
-          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add r7_mondai_3syu_official.pdf r7_pages r7_page_map.json R7_OFFICIAL_SOURCE.md index.html
+          git add index.html
           if git diff --cached --quiet; then
             echo "No changes"
             exit 0
           fi
-          git commit -m "Render official R7 exam pages for mobile"
+          git commit -m "Show official R7 exam pages as local images"
           git push
