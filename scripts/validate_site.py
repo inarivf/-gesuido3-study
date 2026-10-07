@@ -6,7 +6,7 @@ errors=[]
 
 def fail(msg): errors.append(msg)
 
-for file in ["index.html","site_template.html","r7_meta.json","r6_meta.json","r7_page_map.json","r6_build_audit.json","r7_mondai_3syu_official.pdf","r6_archive.html"]:
+for file in ["index.html","site_template.html","r7_meta.json","r6_meta.json","r6_build_audit.json","r7_mondai_3syu_official.pdf","r6_archive.html","r7_question_map.json","question_view_audit.json"]:
     if not (ROOT/file).exists():
         fail(f"missing {file}")
 
@@ -22,11 +22,16 @@ if not errors:
     bad=[q["id"] for q in allq if q.get("answer") not in [1,2,3,4]]
     if bad: fail("invalid answers: "+",".join(bad))
 
-    pmap=json.loads((ROOT/"r7_page_map.json").read_text(encoding="utf-8"))
-    qmap=pmap.get("question_to_page",{})
-    if len(qmap)!=60: fail(f"R7 page map count {len(qmap)}")
+    qmap=json.loads((ROOT/"r7_question_map.json").read_text(encoding="utf-8")).get("questions",{})
+    if len(qmap)!=60: fail(f"R7 question crop map count {len(qmap)}")
     for n in range(1,61):
-        if str(n) not in qmap: fail(f"R7 missing page map Q{n}")
+        if str(n) not in qmap: fail(f"R7 missing question crop Q{n}")
+        if not (ROOT/f"r7_questions/q-{n:03d}.jpg").exists(): fail(f"R7 missing crop q-{n:03d}.jpg")
+        if not (ROOT/f"r6_questions/q-{n:03d}.html").exists(): fail(f"R6 missing question page q-{n:03d}.html")
+    qview=json.loads((ROOT/"question_view_audit.json").read_text(encoding="utf-8"))
+    if qview.get("r7_detected_questions")!=60: fail(f"R7 bbox detected {qview.get('r7_detected_questions')}")
+    if qview.get("r7_crops")!=60: fail(f"R7 crop count {qview.get('r7_crops')}")
+    if qview.get("r6_question_pages")!=60: fail(f"R6 question page count {qview.get('r6_question_pages')}")
 
     audit=json.loads((ROOT/"r6_build_audit.json").read_text(encoding="utf-8"))
     if audit.get("questions")!=60: fail(f"R6 archive questions {audit.get('questions')}")
@@ -37,13 +42,13 @@ if not errors:
 
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
-        "v1.0","実過去問120問","R7_QUESTIONS","R6_QUESTIONS",
+        "v1.1","実過去問120問","R7_QUESTIONS","R6_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
-        "./r7_pages/page-","./r6_archive.html#r6q","gesuido3_progress_v1"
+        "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
     for x in required:
         if x not in html: fail(f"index missing marker: {x}")
-    forbidden=["docs.google.com/gview","id=\"officialPdf\"","v0.6","v0.7","v0.8"]
+    forbidden=["docs.google.com/gview","id=\"officialPdf\"","v0.6","v0.7","v0.8","./r7_pages/page-"]
     for x in forbidden:
         if x in html: fail(f"index contains obsolete marker: {x}")
     if html.count("__R7__") or html.count("__R6__"): fail("unreplaced placeholders")
@@ -59,4 +64,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: 120 questions, R7 60/60, R6 60/60, no answer mismatch")
+print("VALIDATION PASS: v1.1, 120 questions, one-question views 60/60 + 60/60, no answer mismatch")
