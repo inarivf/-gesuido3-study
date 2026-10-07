@@ -34,7 +34,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 .sessiontop{display:flex;justify-content:space-between;gap:10px;align-items:center;font-weight:850;color:#075f73}
 .timer{font-variant-numeric:tabular-nums}
 .progress{height:9px;background:#e1eaec;border-radius:999px;overflow:hidden;margin-top:8px}.progress i{display:block;height:100%;background:linear-gradient(90deg,#087c91,#0aa4b5);width:0}
-.viewer{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}.viewer img{display:block;width:100%;height:auto}.viewer iframe{display:block;width:100%;height:62vh;min-height:520px;border:0;background:#fff}
+.viewer{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}.viewer img{display:block;width:100%;height:auto}.viewer iframe{display:block;width:100%;height:300px;min-height:0;border:0;background:#fff;overflow:hidden}
 .qhead{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.qnum{font-weight:950;color:#075f73}.qmeta{font-size:.78rem;color:var(--muted);text-align:right}
 .answers{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
 .choice{border:2px solid #cbdadd;background:#fff;border-radius:14px;padding:14px;font-size:1.2rem;font-weight:950}
@@ -49,13 +49,13 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 .toast{position:fixed;left:50%;bottom:82px;transform:translateX(-50%) translateY(20px);background:#173a45;color:#fff;padding:10px 14px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:50;font-size:.86rem;max-width:90%;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .hidden{display:none!important}
-@media(max-width:620px){.dashboard{grid-template-columns:repeat(2,1fr)}.modes{grid-template-columns:1fr}.answers{grid-template-columns:repeat(2,1fr)}.viewer iframe{height:56vh;min-height:450px}.hero h1{font-size:1.38rem}}
+@media(max-width:620px){.dashboard{grid-template-columns:repeat(2,1fr)}.modes{grid-template-columns:1fr}.answers{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:1.38rem}}
 </style>
 </head>
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問120問</span><span class="badge">v1.1</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問120問</span><span class="badge">v1.1.1</span>
 <h1>💧 下3トレーナー</h1>
 <p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
@@ -201,7 +201,15 @@ function resizeR6Frame(){
  try{
   const d=f.contentDocument;
   if(!d)return;
-  f.style.height=Math.max(280,Math.min(1800,d.documentElement.scrollHeight+8))+"px";
+  f.style.height="1px";
+  requestAnimationFrame(()=>{
+   const b=d.body,de=d.documentElement;
+   const h=Math.max(
+    b?b.scrollHeight:0,b?b.offsetHeight:0,
+    de?de.scrollHeight:0,de?de.offsetHeight:0
+   );
+   f.style.height=Math.max(180,h+4)+"px";
+  });
  }catch(e){}
 }
 function shuffle(a){const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x}
