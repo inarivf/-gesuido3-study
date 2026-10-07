@@ -55,9 +55,9 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問120問</span><span class="badge">v1.0</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問120問</span><span class="badge">v1.1</span>
 <h1>💧 下3トレーナー</h1>
-<p>本当に出た問題を解く。回答後にチャッピー解説。スマホだけで完結。</p>
+<p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
 
 <section class="card">
@@ -106,8 +106,8 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 </div>
 
 <div class="viewer">
-<a id="r7PageLink" href="./r7_pages/page-002.jpg" target="_blank" rel="noopener"><img id="r7Page" alt="令和7年度 第3種 公式問題ページ" src="./r7_pages/page-002.jpg"></a>
-<iframe id="r6Frame" class="hidden" title="令和6年度 第50回 第3種 実問題" src="./r6_archive.html#r6q1"></iframe>
+<a id="r7PageLink" href="./r7_questions/q-001.jpg" target="_blank" rel="noopener"><img id="r7Page" alt="令和7年度 第3種 公式問題 問1" src="./r7_questions/q-001.jpg"></a>
+<iframe id="r6Frame" class="hidden" title="令和6年度 第50回 第3種 実問題" src="./r6_questions/q-001.html" onload="resizeR6Frame()"></iframe>
 </div>
 <div class="muted" id="viewerNote" style="margin-top:7px"></div>
 
@@ -148,8 +148,8 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 
 <section class="card">
 <h2>収録・出典</h2>
-<p>✅ <b>令和7年度 第51回 60問</b>：日本下水道事業団の公式問題PDF原本。表示用にページ画像化しています。</p>
-<p>✅ <b>令和6年度 第50回 60問</b>：実問題の保存アーカイブ。問1〜60と正答60問を照合し、不一致0件を確認しています。</p>
+<p>✅ <b>令和7年度 第51回 60問</b>：日本下水道事業団の公式PDF原本から、各問を自動検出して1問単位で表示。</p>
+<p>✅ <b>令和6年度 第50回 60問</b>：実問題保存版を1問単位に分割。問1〜60と正答60問を照合し、不一致0件。</p>
 <p class="muted">R6は日本下水道事業団の公式サイトで問題PDFの掲載期間が終了しているため、保存アーカイブを使用しています。似た問題・生成問題への置換はしていません。</p>
 </section>
 </div>
@@ -167,7 +167,6 @@ const R6_QUESTIONS=[{"id":"R6-01","year":"R6","yearLabel":"令和6年度・第50
 const SETS={R7:R7_QUESTIONS,R6:R6_QUESTIONS};
 const ALL=[...R7_QUESTIONS,...R6_QUESTIONS];
 const STATE_KEY="gesuido3_progress_v1";
-let PAGE_MAP={};
 let state=loadState();
 let session=[];
 let pos=0;
@@ -197,6 +196,14 @@ function loadState(){
 function save(){localStorage.setItem(STATE_KEY,JSON.stringify(state));updateDashboard()}
 function itemState(id){return state.items[id]||(state.items[id]={attempts:0,correct:0,wrong:0,lastChoice:null,lastCorrect:null,rating:""})}
 function q(){return session[pos]}
+function resizeR6Frame(){
+ const f=document.getElementById("r6Frame");
+ try{
+  const d=f.contentDocument;
+  if(!d)return;
+  f.style.height=Math.max(280,Math.min(1800,d.documentElement.scrollHeight+8))+"px";
+ }catch(e){}
+}
 function shuffle(a){const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x}
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2200)}
 function poolFromFilters(){
@@ -234,7 +241,6 @@ function startTimer(on){
  };
  tick();timerHandle=setInterval(tick,1000);
 }
-function approxPage(n){return Math.max(2,Math.min(29,2+Math.floor((n-1)*27/59)))}
 function render(){
  if(!session.length)return;
  const x=q(),is7=x.year==="R7";
@@ -249,20 +255,20 @@ function render(){
  sameYear.forEach(z=>{const o=document.createElement("option");o.value=z.q;o.textContent="問"+z.q;if(z.q===x.q)o.selected=true;jump.appendChild(o)});
  const r7=document.getElementById("r7Page"),r7l=document.getElementById("r7PageLink"),r6=document.getElementById("r6Frame");
  if(is7){
-  const page=PAGE_MAP[String(x.q)]||approxPage(x.q);
-  const src="./r7_pages/page-"+String(page).padStart(3,"0")+".jpg";
-  r7.src=src;r7.alt="令和7年度 第3種 公式問題 問"+x.q+" 掲載ページ";r7l.href=src;
+  const src="./r7_questions/q-"+String(x.q).padStart(3,"0")+".jpg";
+  r7.src=src;r7.alt="令和7年度 第3種 公式問題 問"+x.q;r7l.href=src;
   r7l.classList.remove("hidden");r6.classList.add("hidden");
-  document.getElementById("sourceNotice").innerHTML="<b>日本下水道事業団の公式問題です。</b> 問題文・図表は作り替えていません。";
+  document.getElementById("sourceNotice").innerHTML="<b>日本下水道事業団の公式問題です。</b> 公式PDFからこの1問だけを切り出して表示しています。問題文・図表は作り替えていません。";
   document.getElementById("sourceLink").href="./r7_mondai_3syu_official.pdf";
-  document.getElementById("sourceLink").textContent="公式PDFを別画面で開く";
-  document.getElementById("viewerNote").textContent="画像をタップすると拡大できます。現在の問が載っている公式ページを表示しています。";
+  document.getElementById("sourceLink").textContent="公式PDF原本を開く";
+  document.getElementById("viewerNote").textContent="問"+x.q+"だけを表示中。画像をタップすると拡大できます。";
  }else{
-  r7l.classList.add("hidden");r6.classList.remove("hidden");r6.src="./r6_archive.html#r6q"+x.q;
-  document.getElementById("sourceNotice").innerHTML="<b>第50回に実際に出題された問題です。</b> 保存アーカイブの問題文を表示し、正答は60問すべて照合済みです。";
+  r7l.classList.add("hidden");r6.classList.remove("hidden");
+  r6.src="./r6_questions/q-"+String(x.q).padStart(3,"0")+".html";
+  document.getElementById("sourceNotice").innerHTML="<b>第50回に実際に出題された問題です。</b> 保存アーカイブからこの1問だけを切り出して表示しています。正答は60問すべて照合済みです。";
   document.getElementById("sourceLink").href="./r6_archive.html#r6q"+x.q;
-  document.getElementById("sourceLink").textContent="R6実問題を別画面で開く";
-  document.getElementById("viewerNote").textContent="問番号に対応する実問題へ移動します。";
+  document.getElementById("sourceLink").textContent="R6実問題の原保存版を開く";
+  document.getElementById("viewerNote").textContent="問"+x.q+"だけを表示中。";
  }
  document.getElementById("reveal").classList.remove("show");
  document.querySelectorAll(".choice").forEach(b=>{b.className="choice";b.disabled=false});
@@ -332,7 +338,6 @@ function exportProgress(){
 }
 function resetProgress(){if(confirm("学習履歴を全部リセットしますか？")){state={items:{},createdAt:new Date().toISOString()};save();toast("学習履歴をリセットしました")}}
 (async function init(){
- try{const r=await fetch("./r7_page_map.json",{cache:"no-store"});if(r.ok){const j=await r.json();PAGE_MAP=j.question_to_page||{}}}catch(e){}
  rebuildCategory();updateDashboard();save();
 })();
 </script>
