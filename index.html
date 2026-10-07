@@ -37,7 +37,7 @@ select{border:1px solid #cfdadd;background:white;border-radius:11px;padding:9px 
 .qtitle{font-size:1.25rem;font-weight:900;line-height:1.45;margin:8px 0 12px}
 .paper-note{background:#fff7da;border:1px solid #ead17a;border-radius:12px;padding:9px 10px;font-size:.86rem;margin:8px 0}
 .answers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
-.choice{font-size:1.25rem;font-weight:900;border:2px solid #cbdadd;background:#fff;border-radius:14px;padding:14px}
+.choice{font-size:.94rem;font-weight:800;border:2px solid #cbdadd;background:#fff;border-radius:14px;padding:13px;text-align:left;line-height:1.45;min-height:74px}.choice .num{display:inline-flex;width:1.7em;height:1.7em;align-items:center;justify-content:center;border-radius:50%;background:#edf4f6;color:#075f73;margin-right:.45em;font-weight:950;vertical-align:middle}
 .choice.selected{border-color:var(--main);background:#ecf9fb} .choice.correct{border-color:var(--good);background:#e9f8f1;color:#086a49} .choice.wrong{border-color:var(--bad);background:#fff0f1;color:#aa2830}
 .reveal{display:none} .reveal.show{display:block}
 .box{border-left:5px solid var(--main);background:#f1fafb;border-radius:10px;padding:10px 11px;margin:8px 0}
@@ -61,7 +61,7 @@ select{border:1px solid #cfdadd;background:white;border-radius:11px;padding:9px 
 <body>
 <div class="shell">
 <header class="hero">
- <span class="badge">下水道技術検定 第3種</span><span class="badge">後輩用</span><span class="badge">v0.2</span>
+ <span class="badge">下水道技術検定 第3種</span><span class="badge">後輩用</span><span class="badge">v0.3</span>
  <h1>💧 下3トレーナー</h1>
  <p>令和7・6年度の120論点。解く、覚える、間違いだけ戻る。</p>
  <p id="examCountdown" style="margin-top:8px;font-weight:800"></p>
@@ -88,7 +88,7 @@ select{border:1px solid #cfdadd;background:white;border-radius:11px;padding:9px 
  <div class="card">
   <h2>今日どうやる？</h2>
   <div class="mode-list">
-   <button class="mode" onclick="startMode('quick')"><b>⚡ ランダム20問</b><small>短時間で回す。紙の問題冊子と併用。</small></button>
+   <button class="mode" onclick="startMode('quick')"><b>⚡ ランダム20問</b><small>問題文も選択肢も全部表示。スマホだけで20問。</small></button>
    <button class="mode" onclick="startMode('weak')"><b>🩹 弱点だけ復習</b><small>間違い・怪しい問題だけ自動抽出。</small></button>
    <button class="mode" onclick="startMode('flash')"><b>🧠 暗記カード</b><small>論点から説明できるか確認して答えを開く。</small></button>
    <button class="mode" onclick="startMode('mock')"><b>⏱ 60問 模試</b><small>公式試験と同じ60問。3時間15分タイマー。</small></button>
@@ -104,8 +104,8 @@ select{border:1px solid #cfdadd;background:white;border-radius:11px;padding:9px 
  </div>
  <div class="card">
   <h2>この版の使い方</h2>
-  <p style="margin:.3em 0">📄 <b>紙連携4択</b>は、手元の公式過去問で同じ問番号を見ながら「1〜4」をタップ。答えた瞬間に解説が出る。</p>
-  <p style="margin:.3em 0">🧠 <b>暗記カード</b>は問題冊子なしでも使える。論点名だけ見て頭の中で説明してから答えを開く。</p>
+  <p style="margin:.3em 0">📱 <b>完全オンライン4択</b>。問題文と4つの選択肢をこの画面に表示し、答えた瞬間に解説が出る。</p>
+  <p style="margin:.3em 0">🧠 <b>暗記カード</b>は論点名だけ見て、頭の中で説明してから答えを開く。</p>
   <p style="margin:.3em 0">進捗はこの端末のブラウザに保存。サーバー・ログイン不要。</p>
   <p style="margin:.3em 0">令和7年度の公式問題：<a class="link" href="https://www.jswa.go.jp/kentei/pdf/r7mondai_seito/mondai_3syu.pdf" target="_blank" rel="noopener">日本下水道事業団PDFを開く</a></p>
  </div>
@@ -116,16 +116,16 @@ select{border:1px solid #cfdadd;background:white;border-radius:11px;padding:9px 
   <div class="qtop"><span id="qPos">1 / 20</span><span class="timer" id="timer"></span><span id="qSource">R7 Q1</span></div>
   <div><span class="qtag" id="qCat">法規</span></div>
   <div class="qtitle" id="qTitle"></div>
-  <div class="paper-note" id="paperNote">📄 手元の問題冊子でこの問番号を開いて、正しいと思う選択肢番号を押してください。</div>
+  <div class="paper-note" id="paperNote">📱 この問題は過去問の出題論点をもとにした学習用オリジナル4択です。最も適切な説明を選んでください。</div>
   <div class="answers" id="answerButtons">
-   <button class="choice" data-a="1" onclick="answer(1)">1</button>
-   <button class="choice" data-a="2" onclick="answer(2)">2</button>
-   <button class="choice" data-a="3" onclick="answer(3)">3</button>
-   <button class="choice" data-a="4" onclick="answer(4)">4</button>
+   <button class="choice" data-a="1" onclick="answer(1)"><span class="num">1</span><span class="choiceText"></span></button>
+   <button class="choice" data-a="2" onclick="answer(2)"><span class="num">2</span><span class="choiceText"></span></button>
+   <button class="choice" data-a="3" onclick="answer(3)"><span class="num">3</span><span class="choiceText"></span></button>
+   <button class="choice" data-a="4" onclick="answer(4)"><span class="num">4</span><span class="choiceText"></span></button>
   </div>
   <button id="revealBtn" class="btn primary hidden" onclick="revealFlash()">答えを見る</button>
   <div id="reveal" class="reveal">
-   <div class="box"><b id="correctLine"></b><br><span id="qExplain"></span></div>
+   <div class="box"><b id="correctLine"></b><br><span id="qExplain"></span><div style="margin-top:7px;font-size:.76rem;color:#60747c">※詳しい解説は元の過去問論点に基づくため、文中の「選択肢○」は元問題を指す場合があります。</div></div>
    <div class="formula hidden" id="qFormula"></div>
    <div class="box trap"><b>ここで引っかけ：</b> <span id="qTrap"></span></div>
    <div class="box memo">🧠 <span id="qMemo"></span></div>
@@ -154,8 +154,8 @@ select{border:1px solid #cfdadd;background:white;border-radius:11px;padding:9px 
  <div class="card">
   <h2>教材について</h2>
   <p>第3種の公式試験科目は、下水処理・工場排水・運転管理・安全管理・法規。2026年度試験も多肢選択式で実施されます。</p>
-  <p>このv0.2は令和7・6年度の解説データ120問を学習用に再構成。原問題の文章・図・写真は公式問題冊子を正本にしてください。</p>
-  <p><b>次版候補：</b>完全スタンドアロン4択、令和5年度以前の追加、図解ミニ講義、苦手分野自動出題。</p>
+  <p>このv0.3は令和7・6年度の120論点を、サイト内だけで解けるオリジナル4択問題に再構成。元の公式問題文・図・写真は転載せず、論点と解説を学習用に作り直しています。</p>
+  <p><b>次版候補：</b>令和5年度以前の追加、図解ミニ講義、苦手分野自動出題、出題履歴からの重点復習。</p>
  </div>
 </section>
 </div>
@@ -202,19 +202,59 @@ function startMode(mode){
  if(flashMode) session=shuffle(pool).slice(0,20);
  pos=0; showPage('quiz'); renderQ();
 }
+
+function cleanMemo(s){
+ return String(s||'').replace(/^一言暗記[:：]?\s*/,'').trim();
+}
+function choicePool(q){
+ const same=QUESTIONS.filter(x=>x.id!==q.id && x.category===q.category && cleanMemo(x.memo));
+ const near=QUESTIONS.filter(x=>x.id!==q.id && x.category!==q.category && cleanMemo(x.memo));
+ return [...same,...near];
+}
+function buildChoices(q){
+ const correct=cleanMemo(q.memo)||q.title;
+ const pool=choicePool(q);
+ const picked=[];
+ // Deterministic-ish selection by question number/year, so refresh does not reshuffle answers wildly.
+ let seed=(q.q*17)+(q.year==='R7'?7:6);
+ for(let k=0;k<pool.length && picked.length<3;k++){
+   const cand=pool[(seed+k*11)%pool.length];
+   const t=cleanMemo(cand.memo);
+   if(t && t!==correct && !picked.includes(t)) picked.push(t);
+ }
+ while(picked.length<3){
+   const fallback=[
+     '設備・処理条件にかかわらず、常に同じ管理値を用いる。',
+     '異常時も運転条件を変更せず、自然回復を待つのが基本である。',
+     'この項目は維持管理上ほとんど確認する必要がない。'
+   ][picked.length];
+   if(!picked.includes(fallback) && fallback!==correct) picked.push(fallback);
+ }
+ const ans=Math.min(4,Math.max(1,Number(q.answer)||1));
+ const opts=[];
+ let di=0;
+ for(let i=1;i<=4;i++) opts.push(i===ans?correct:picked[di++]);
+ return opts;
+}
+
 function renderQ(){
  if(!session.length) return;
  const q=session[pos]; answered=false;
  document.getElementById('qPos').textContent=`${pos+1} / ${session.length}`;
  document.getElementById('qSource').textContent=`${q.yearLabel} Q${q.q}`;
  document.getElementById('qCat').textContent=q.category;
- document.getElementById('qTitle').textContent=flashMode?`「${q.title}」を説明できる？`:q.title;
+ document.getElementById('qTitle').textContent=flashMode?`「${q.title}」を説明できる？`:`【${q.title}】について、最も適切な説明はどれ？`;
  document.getElementById('paperNote').classList.toggle('hidden',flashMode);
  document.getElementById('answerButtons').classList.toggle('hidden',flashMode);
+ if(!flashMode){
+   const opts=buildChoices(q);
+   [...document.querySelectorAll('.choice')].forEach((b,i)=>{const t=b.querySelector('.choiceText'); if(t)t.textContent=opts[i]});
+ }
  document.getElementById('revealBtn').classList.toggle('hidden',!flashMode);
  document.getElementById('reveal').classList.remove('show');
  [...document.querySelectorAll('.choice')].forEach(b=>b.className='choice');
- document.getElementById('correctLine').textContent=`公式正答：(${q.answer})`;
+ const currentOpts=flashMode?[]:buildChoices(q);
+ document.getElementById('correctLine').textContent=flashMode?`要点：${cleanMemo(q.memo)}`:`正解：(${q.answer}) ${currentOpts[q.answer-1]}`;
  document.getElementById('qExplain').textContent=q.explain;
  document.getElementById('qTrap').textContent=q.trap||'この論点の言い換え・数字のずらしに注意。';
  document.getElementById('qMemo').textContent=q.memo;
