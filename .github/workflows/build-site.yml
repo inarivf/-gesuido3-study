@@ -1,17 +1,25 @@
-name: Build multi-year study site
+name: Build and validate study site
 
 on:
   workflow_dispatch:
   push:
     paths:
       - '.github/workflows/build-site.yml'
-      - 'scripts/patch_multi_year.py'
+      - 'site_template.html'
+      - 'r7_meta.json'
       - 'r6_meta.json'
-      - 'r6_archive.html'
       - 'r7_page_map.json'
+      - 'r6_build_audit.json'
+      - 'r6_archive.html'
+      - 'scripts/build_site.py'
+      - 'scripts/validate_site.py'
 
 permissions:
   contents: write
+
+concurrency:
+  group: gesuido3-site-build
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -19,16 +27,35 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build site
-        run: python3 scripts/patch_multi_year.py
-      - name: Commit site
+
+      - name: Build v1.0
+        run: python3 scripts/build_site.py
+
+      - name: Validate 120 questions and sources
+        run: python3 scripts/validate_site.py
+
+      - name: Validate JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path("index.html").read_text(encoding="utf-8")
+          parts=re.findall(r"<script>([\s\S]*?)</script>",s)
+          if len(parts)!=1:
+              raise SystemExit(f"expected 1 script block, got {len(parts)}")
+          Path(".site-check.js").write_text(parts[0],encoding="utf-8")
+          PY
+          node --check .site-check.js
+          rm .site-check.js
+
+      - name: Commit generated site
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add index.html site_manifest.json
           if git diff --cached --quiet; then
-            echo "No changes"
+            echo "No generated changes"
             exit 0
           fi
-          git commit -m "Add R6 real exam year switch"
+          git commit -m "Build 下3 trainer v1.0"
           git push
