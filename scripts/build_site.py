@@ -37,7 +37,7 @@ if "__R7__" in html or "__R6__" in html or "__R3__" in html or "__R2__" in html:
 
 (ROOT/"index.html").write_text(html,encoding="utf-8")
 manifest={
-    "version":"1.7",
+    "version":"1.8",
     "generated_from":["site_template.html","r7_meta.json","r6_meta.json","r3_meta.json","r2_meta.json","r7_question_map.json","r6_questions/"],
     "question_counts":{"R7":60,"R6":60,"R3":60,"R2":60,"total":240},
     "r7_source":"日本下水道事業団 令和7年度 第51回 第3種 公式問題PDF（1問単位ビュー生成）",
