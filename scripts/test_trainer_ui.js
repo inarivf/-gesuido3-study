@@ -412,8 +412,9 @@ guided.run("rebuildCategory()");
 guided.run('startMode("sequential")');
 guided.run("answer(2)");
 assert(guided.el("explanationAuditNote").textContent.includes("保存資料"));
-assert(guided.el("explanationAuditNote").textContent.includes("監査は未完了"));
-info("explanations clearly disclose source and independent-audit limitations");
+assert(guided.el("explanationAuditNote").textContent.includes("内容確認済み"));
+assert(guided.el("explanationReferences").innerHTML.includes("e-Gov"));
+info("explanations distinguish source verification from independently reviewed rationale");
 
 // A learning suggestion must not destroy the user’s unfinished exam without
 // the existing confirmation guard. Confirm rejection is simulated here.
@@ -428,6 +429,36 @@ assert.equal(guided.run("mockRunKey"),oldExamKey);
 assert.equal(guided.run("Object.keys(sessionAnswers).length"),1);
 info("recommendation respects interruption guard for an active mock");
 
-console.log("UI REGRESSION PASS: 23 scenarios");
+// v1.9 independently grounded explanations and source-damage warnings
+const auditCase=bootFresh();
+auditCase.el("yearFilter").value="R2";
+auditCase.run('startMode("sequential")');
+assert.equal(auditCase.el("explanationReferences").innerHTML,"");
+auditCase.run("answer(2)");
+assert(auditCase.el("explain").textContent.includes("下水道法第20条"));
+assert(auditCase.el("explanationAuditNote").textContent.includes("内容確認済み"));
+assert(auditCase.el("explanationReferences").innerHTML.includes("laws.e-gov.go.jp"));
+info("reviewed law explanation and original evidence display only after answering");
+
+auditCase.run('session=[QUESTION_BY_ID.get("R2-11")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+auditCase.run("answer(3)");
+assert(auditCase.el("explain").textContent.includes("1,503"));
+assert(auditCase.el("explanationAuditNote").textContent.includes("再計算済み"));
+assert.equal(auditCase.el("formula").classList.contains("hidden"),false);
+info("calculated MLSS explanation includes formula and separate verification status");
+
+auditCase.run('session=[QUESTION_BY_ID.get("R2-24")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+assert(auditCase.el("sourceNotice").innerHTML.includes("参考問題（原本確認待ち）"));
+assert.equal(auditCase.el("reveal").classList.contains("show"),false);
+auditCase.run("answer(1)");
+assert(auditCase.el("explanationAuditNote").textContent.includes("参考扱い"));
+info("damaged R2 Q24 wording is warned before answer and never promoted as verified");
+
+auditCase.run('session=[QUESTION_BY_ID.get("R2-48")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+assert(auditCase.el("sourceNotice").innerHTML.includes("図なしでは確実に解けない"));
+assert.equal(auditCase.run('QUESTION_BY_ID.get("R2-48").answer'),4);
+info("diagram-dependent R2 Q48 flagged without modifying correct answer");
+
+console.log("UI REGRESSION PASS: 27 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
