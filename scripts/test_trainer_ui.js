@@ -374,6 +374,60 @@ const oldCheck=restoredExam.run("validateProgressBackup("+JSON.stringify(oldForm
 assert.equal(oldCheck.mockHistory.length,0);
 info("new history backup round-trip, corrupt records rejected, old backups supported");
 
-console.log("UI REGRESSION PASS: 19 scenarios");
+
+// v1.8: a new user gets an explanation of the recommended starting topic.
+const guided=bootFresh();
+guided.run('state={items:{},createdAt:new Date().toISOString()};save()');
+assert.equal(typeof guided.run("suggestedCategory"),"string");
+assert(guided.el("studyRecommendation").innerHTML.includes("未回答"));
+guided.run("startRecommendedStudy()");
+assert.equal(guided.run("session.length"),10);
+assert.equal(guided.run("sessionMode"),"priority10");
+assert.equal(guided.run("new Set(session.map(x=>x.id)).size"),10);
+assert.equal(guided.run("new Set(session.map(x=>x.category)).size"),1);
+info("new learner receives a topic recommendation and ten on-topic questions");
+
+// Explicit weakness ratings should affect the recommendation immediately.
+guided.run('state.items["R7-01"]={attempts:1,correct:0,wrong:1,lastChoice:1,lastCorrect:false,rating:"ng"}');
+guided.run('state.items["R7-02"]={attempts:1,correct:0,wrong:1,lastChoice:1,lastCorrect:false,rating:"ng"}');
+guided.run("save()");
+assert.equal(guided.run("suggestedCategory"),guided.run('QUESTION_BY_ID.get("R7-01").category'));
+const chosen=guided.run("suggestedCategory");
+guided.run("startRecommendedStudy()");
+assert.equal(guided.run("session.length"),10);
+assert.equal(guided.run("session.every(x=>x.category===suggestedCategory)"),true);
+assert(guided.run('session.some(x=>x.id==="R7-01")'));
+info("weak topic gets priority without changing question source data");
+
+// Distinguish verified answer keys from technical explanations, which require
+// independent review. This must be visible only after answering.
+guided.el("yearFilter").value="R7";
+guided.run('startMode("sequential")');
+assert.equal(guided.el("explanationAuditNote").textContent,"");
+guided.run("answer(4)");
+assert(guided.el("explanationAuditNote").textContent.includes("公式資料と照合"));
+assert(guided.el("explanationAuditNote").textContent.includes("独立した技術・法令監査は未完了"));
+guided.el("yearFilter").value="R2";
+guided.run("rebuildCategory()");
+guided.run('startMode("sequential")');
+guided.run("answer(2)");
+assert(guided.el("explanationAuditNote").textContent.includes("保存資料"));
+assert(guided.el("explanationAuditNote").textContent.includes("監査は未完了"));
+info("explanations clearly disclose source and independent-audit limitations");
+
+// A learning suggestion must not destroy the user’s unfinished exam without
+// the existing confirmation guard. Confirm rejection is simulated here.
+guided.el("yearFilter").value="R7";
+guided.run('startMode("mock")');
+guided.run("answer(1)");
+const oldExamKey=guided.run("mockRunKey");
+guided.context.confirm=()=>false;
+guided.run("startRecommendedStudy()");
+assert.equal(guided.run("sessionMode"),"mock");
+assert.equal(guided.run("mockRunKey"),oldExamKey);
+assert.equal(guided.run("Object.keys(sessionAnswers).length"),1);
+info("recommendation respects interruption guard for an active mock");
+
+console.log("UI REGRESSION PASS: 23 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
