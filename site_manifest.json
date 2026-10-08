@@ -1,18 +1,21 @@
 {
-  "version": "1.1",
+  "version": "1.2",
   "generated_from": [
     "site_template.html",
     "r7_meta.json",
     "r6_meta.json",
+    "r3_meta.json",
     "r7_question_map.json",
     "r6_questions/"
   ],
   "question_counts": {
     "R7": 60,
     "R6": 60,
-    "total": 120
+    "R3": 60,
+    "total": 180
   },
   "r7_source": "日本下水道事業団 令和7年度 第51回 第3種 公式問題PDF（1問単位ビュー生成）",
   "r6_source": "保存実問題アーカイブ（1問単位ビュー生成）。正答60問照合済み",
+  "r3_source": "令和3年度 第47回 実問題保存本文を整形表示。独立正答資料と60問照合済み",
   "generated_file": "index.html"
 }
