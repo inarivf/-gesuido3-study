@@ -51,11 +51,11 @@ review=read_json("research/explanation_review_v001.json")
 reviewed={item["id"] for item in review["reviewed"]}
 holds={item["id"] for item in review["holds"]}
 assert holds==set(HOLD_IDS),f"Unexpected held questions: {sorted(holds)}"
-assert len(reviewed)==24 and not reviewed.intersection(holds)
+assert len(reviewed)==28 and not reviewed.intersection(holds)
 assert all(x in all_ids for x in holds|reviewed)
 r3_review=read_json("research/r3_explanation_review_v001.json")
 r3_reviewed={r["id"] for r in r3_review["reviewed"]}
-assert r3_reviewed=={"R3-01","R3-03","R3-08","R3-09","R3-23","R3-24","R3-37","R3-38"}
+assert r3_reviewed=={"R3-01","R3-03","R3-06","R3-07","R3-08","R3-09","R3-23","R3-24","R3-33","R3-37","R3-38","R3-51","R3-55","R3-57","R3-60"}
 assert all(x in all_ids for x in r3_reviewed)
 
 # The existing two attempted repairs are transparent but should never be
@@ -102,6 +102,7 @@ report={
  "current_grading_pool":EXAM_TOTAL-len(holds),
  "r2_independently_reviewed_explanations":len(reviewed),
  "r3_independently_reviewed_explanations":len(r3_reviewed),
+ "r2_unverified_specific_drafts":len(read_json("research/r2_unverified_explanations_v001.json")["drafted"]),
  "archival_repairs_without_direct_r2_official_comparison":list(REPAIRED_IDS),
  "r2_archival_table_warning":"R2-43",
  "arithmetic_checks":list(math_checks),
@@ -117,9 +118,9 @@ report={
    "R2-17 and R2-36 have non-official archival text repairs; the arithmetic check cannot validate the historical original wording.",
    "R2 held six questions are excluded from graded study; still visible in reference-only mode.",
    "R3 and R2 archive wordings and all 240 published-question reuse conditions have not undergone a complete manual review.",
-   "Only twenty-four R2 rationales and eight R3 rationales have independent additional explanation review; the remaining explanations are not all audited."
+   "Only twenty-eight R2 rationales and fifteen R3 rationales have independent additional explanation review; the remaining explanations are not all audited."
  ]
 }
 out=ROOT/"research/question_integrity_audit_v001.json"
 out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-print("QUESTION_INTEGRITY_PASS: 240 source rows, 6 holds, 2 repaired-wording warnings, 7 arithmetic checks, 24 reviewed R2 explanations, 8 R3 explanations")
+print("QUESTION_INTEGRITY_PASS: 240 source rows, 6 holds, 2 repaired-wording warnings, 7 arithmetic checks, 28 reviewed R2 explanations, 15 R3 explanations, 26 unverified draft explanations")
