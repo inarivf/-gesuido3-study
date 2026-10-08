@@ -121,10 +121,13 @@ if not errors:
     for n in (17,36,43):
         if not r2[n-1].get("sourceWarning"):
             fail(f"R2 Q{n} missing original-source warning")
+    # The explanation overlay must change rationale only, never original questions or answers.
+    reviews=json.loads((ROOT/"research/explanation_review_v001.json").read_text(encoding="utf-8"))
+    assert len(reviews["reviewed"])==8 and len(reviews["holds"])==3
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
-        "studyRecommendation","explanationAuditNote",
-        "v1.8","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
+        "studyRecommendation","explanationAuditNote","explanationReferences",
+        "v1.9","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
@@ -138,6 +141,12 @@ if not errors:
     if len(re.findall(r'"id":"R6-',html))!=60: fail("embedded R6 count not 60")
     if len(re.findall(r'"id":"R3-',html))!=60: fail("embedded R3 count not 60")
     if len(re.findall(r'"id":"R2-',html))!=60: fail("embedded R2 count not 60")
+    for item in reviews["reviewed"]:
+        if '"id":"'+item["id"]+'"' not in html or item["explain"] not in html:
+            fail(f"reviewed explanation missing in published bundle: {item['id']}")
+    for item in reviews["holds"]:
+        if item["warning"] not in html:
+            fail(f"source damage warning missing in published bundle: {item['id']}")
 
     archive=(ROOT/"r6_archive.html").read_text(encoding="utf-8")
     archive_soup=BeautifulSoup(archive,"html.parser")
@@ -164,4 +173,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.8, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
+print("VALIDATION PASS: v1.9, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
