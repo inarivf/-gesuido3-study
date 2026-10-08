@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "audit_date": "2026-10-08",
+  "scope": "Local source structure, answer-key consistency and deterministic arithmetic, not full page-by-page verbatim/source-rights review",
+  "year_counts": {
+    "R7": 60,
+    "R6": 60,
+    "R3": 60,
+    "R2": 60
+  },
+  "total_archived_questions": 240,
+  "excluded_from_grading": [
+    "R2-10",
+    "R2-15",
+    "R2-24",
+    "R2-30",
+    "R2-43",
+    "R2-48"
+  ],
+  "current_grading_pool": 234,
+  "r2_independently_reviewed_explanations": 20,
+  "archival_repairs_without_direct_r2_official_comparison": [
+    "R2-17",
+    "R2-36"
+  ],
+  "r2_archival_table_warning": "R2-43",
+  "arithmetic_checks": [
+    "R2-11",
+    "R2-17",
+    "R2-36",
+    "R3-23",
+    "R3-37",
+    "R3-38"
+  ],
+  "source_classes": {
+    "R7": "Official PDF split into per-question images; cropped views checked separately by build_question_views.py",
+    "R6": "Saved archive HTML split into 60 per-question views; validated separately",
+    "R3": "Reconstructed or normalized saved question text; no direct JSWA original PDF comparison",
+    "R2": "Saved blog text and answer list; original PDF direct comparison unresolved for some passages"
+  },
+  "finding": "STRUCTURE_PASS_WITH_SOURCE_LIMITATIONS",
+  "critical_limits": [
+    "60 correct answer numbers per year do not prove each original stem/choice matches the official paper.",
+    "R2-17 and R2-36 have non-official archival text repairs; the arithmetic check cannot validate the historical original wording.",
+    "R2 held six questions are excluded from graded study; still visible in reference-only mode.",
+    "R3 and R2 archive wordings and all 240 published-question reuse conditions have not undergone a complete manual review.",
+    "Only twenty R2 rationales have independent additional explanation review; the remaining explanations are not all audited."
+  ]
+}
