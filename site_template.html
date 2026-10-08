@@ -260,7 +260,8 @@ function isWeak(x){
 }
 function priorityScore(x){
  const s=state.items[x.id];
- if(!s||!s.attempts)return 20;
+ if(!s)return 20;
+ if(!s.attempts&&!(["ng","maybe","ok"].includes(s.rating)))return 20;
  let score=0;
  if(s.rating==="ok")return -100;
  if(s.rating==="ng")score+=110;
