@@ -308,6 +308,72 @@ assert.equal(stored.has("gesuido3_mock_draft_v1"),false);
 assert.equal(afterClose.run('state.items["R7-01"].attempts'),1);
 info("reset and backup import invalidate stale mock snapshots");
 
-console.log("UI REGRESSION PASS: 15 scenarios");
+
+// v1.7: completed mock history preserves score, wrong answers and unattempted.
+const record=bootFresh();
+record.el("yearFilter").value="R7";
+record.run('startMode("mock")');
+record.run("answer(1)");  // Q1 correct=4, deliberately wrong
+record.run("move(1)");
+record.run("answer(4)");  // Q2 correct=4
+record.run('finishMock("manual")');
+assert.equal(record.run("state.mockHistory.length"),1);
+assert.equal(record.run("state.mockHistory[0].score"),1);
+assert.equal(record.run("state.mockHistory[0].wrongIds[0]"),"R7-01");
+assert.equal(record.run("state.mockHistory[0].wrongIds.length"),1);
+assert.equal(record.run("state.mockHistory[0].blankIds.length"),58);
+assert(record.el("mockHistory").innerHTML.includes("1/60点"));
+assert.equal(record.el("mockRetryWrong").classList.contains("hidden"),false);
+record.run('finishMock("time")');
+assert.equal(record.run("state.mockHistory.length"),1,"regrade must not duplicate scores");
+info("mock score report saves correct, wrong and unanswered lists once");
+
+// Wrong-answer retry is a clean session with no answer leakage or extra exam score.
+record.run("startMistakeReview(0)");
+assert.equal(record.run("sessionMode"),"mistakes");
+assert.equal(record.run("session.length"),1);
+assert.equal(record.run("q().id"),"R7-01");
+assert(!record.buttons.some(b=>b.classList.contains("correct")));
+record.run("answer(4)");
+assert.equal(record.run("state.mockHistory.length"),1);
+assert.equal(record.run('state.items["R7-01"].lastCorrect'),true);
+info("one-click wrong-answer review only selects previously missed problems");
+
+// A later exam shows the difference against the prior attempt of the same year.
+record.run('startMode("mock")');
+record.run("answer(4)"); // Q1 right
+record.run("move(1)");
+record.run("answer(4)"); // Q2 right
+record.run("move(1)");
+record.run("answer(1)"); // Q3 wrong
+record.run('finishMock("manual")');
+assert.equal(record.run("state.mockHistory.length"),2);
+assert.equal(record.run("state.mockHistory[0].score"),2);
+assert.equal(record.run("state.mockHistory[0].wrongIds[0]"),"R7-03");
+assert(record.el("mockHistory").innerHTML.includes("+1点"));
+const restoredExam=bootFresh();
+assert.equal(restoredExam.run("state.mockHistory.length"),2);
+assert(restoredExam.el("mockHistory").innerHTML.includes("+1点"));
+info("same-year trend and exam history survive browser restart");
+
+// New format is exported with the regular progress JSON and restored intact.
+const backupPayload=JSON.parse(stored.get("gesuido3_progress_v1"));
+const backupResult=restoredExam.run("validateProgressBackup("+JSON.stringify(backupPayload)+")");
+assert.equal(backupResult.mockHistory.length,2);
+const brokenHistory=JSON.parse(JSON.stringify(backupPayload));
+brokenHistory.mockHistory[0].wrongIds.push("R7-03");
+assert.throws(()=>restoredExam.run("validateProgressBackup("+JSON.stringify(brokenHistory)+")"));
+assert.equal(restoredExam.run("state.mockHistory.length"),2);
+const importedInput={value:"history.json",files:[{size:1500,text:async()=>JSON.stringify(backupPayload)}]};
+restoredExam.context.restoreInput={target:importedInput};
+await restoredExam.run("importProgress(restoreInput)");
+assert.equal(restoredExam.run("state.mockHistory.length"),2);
+assert.equal(restoredExam.run("state.lastGradedMockKey"),backupPayload.lastGradedMockKey);
+const oldFormat={items:{"R7-01":{attempts:1,correct:1,wrong:0,lastChoice:4,lastCorrect:true,rating:"ok"}}};
+const oldCheck=restoredExam.run("validateProgressBackup("+JSON.stringify(oldFormat)+")");
+assert.equal(oldCheck.mockHistory.length,0);
+info("new history backup round-trip, corrupt records rejected, old backups supported");
+
+console.log("UI REGRESSION PASS: 19 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
