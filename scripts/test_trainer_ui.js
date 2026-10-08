@@ -459,6 +459,29 @@ assert(auditCase.el("sourceNotice").innerHTML.includes("図なしでは確実に
 assert.equal(auditCase.run('QUESTION_BY_ID.get("R2-48").answer'),4);
 info("diagram-dependent R2 Q48 flagged without modifying correct answer");
 
-console.log("UI REGRESSION PASS: 27 scenarios");
+// v1.10: quality counts and additional checked explanations
+const checks=bootFresh();
+assert.equal(checks.el("reviewedCount").textContent,"18");
+assert.equal(checks.el("holdCount").textContent,"6");
+info("quality dashboard reports 18 independently grounded explanations and six holds");
+
+checks.run('session=[QUESTION_BY_ID.get("R2-09")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+checks.run("answer(3)");
+assert(checks.el("explain").textContent.includes("廃棄物処理法第4条"));
+assert(checks.el("explanationReferences").innerHTML.includes("laws.e-gov.go.jp"));
+info("R2 Q9 verified public-law explanation is displayed with source");
+
+checks.run('session=[QUESTION_BY_ID.get("R2-15")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+assert(checks.el("sourceNotice").innerHTML.includes("正答の暗記に使わない"));
+checks.run("answer(3)");
+assert(checks.el("explanationAuditNote").textContent.includes("参考扱い"));
+info("R2 Q15 potential answer-key discrepancy is not misrepresented as verified");
+
+checks.run('session=[QUESTION_BY_ID.get("R2-30")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+assert(checks.el("sourceNotice").innerHTML.includes("無関係な文字列"));
+assert.equal(checks.run('QUESTION_BY_ID.get("R2-30").answer'),2);
+info("R2 Q30 archival text contamination is exposed before answering");
+
+console.log("UI REGRESSION PASS: 31 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
