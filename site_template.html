@@ -55,10 +55,14 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.9</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.10</span>
 <h1>💧 下3トレーナー</h1>
 <p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
+<section class="card">
+<h2>📚 解説品質の確認状況</h2>
+<p class="muted">全240問のうち、独立した公的資料または計算で詳しい解説を確認した問題は <b id="reviewedCount">0</b> 問。保存原本の図表や設問に確認待ちがある問題は <b id="holdCount">0</b> 問。その他は検証途中です。正答番号の照合と、解説内容の検証は別に管理しています。</p>
+</section>
 
 <section class="card">
 <h2>学習状況</h2>
@@ -485,7 +489,7 @@ function showFeedback(x,choice){
   ?"この解説は記載の法令・公的資料に照らして内容確認済み（全240問の監査完了を意味しません）"
   :x.reviewStatus==="calculation_checked"
   ?"この解説の式と数値は再計算済み（原問題と一次資料の完全照合ではありません）"
-  :x.reviewStatus==="source_damaged"||x.reviewStatus==="figure_unverified"
+  :x.reviewStatus==="source_damaged"||x.reviewStatus==="figure_unverified"||x.reviewStatus==="answer_needs_review"
   ?"原資料の表記・図表が未確定のため参考扱い"
   :x.year==="R2"&&(x.q===17||x.q===36)
   ?"計算式は検算済み（ただし当該年度の公式原問題とは直接照合できていません）"
@@ -579,6 +583,8 @@ function rebuildCategory(){
  if([...s.options].some(o=>o.value===old))s.value=old;
 }
 function updateDashboard(){
+ document.getElementById("reviewedCount").textContent=ALL.filter(x=>x.reviewStatus==="source_checked"||x.reviewStatus==="calculation_checked").length;
+ document.getElementById("holdCount").textContent=ALL.filter(x=>x.reviewStatus==="source_damaged"||x.reviewStatus==="figure_unverified"||x.reviewStatus==="answer_needs_review").length;
  const vals=Object.values(state.items);
  const answered=vals.filter(x=>x.attempts>0).length;
  const attempts=vals.reduce((n,x)=>n+(x.attempts||0),0);
