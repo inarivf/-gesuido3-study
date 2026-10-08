@@ -18,8 +18,8 @@
     "R2-48"
   ],
   "current_grading_pool": 234,
-  "r2_independently_reviewed_explanations": 23,
-  "r3_independently_reviewed_explanations": 4,
+  "r2_independently_reviewed_explanations": 24,
+  "r3_independently_reviewed_explanations": 8,
   "archival_repairs_without_direct_r2_official_comparison": [
     "R2-17",
     "R2-36"
@@ -30,6 +30,7 @@
     "R2-17",
     "R2-36",
     "R3-23",
+    "R3-24",
     "R3-37",
     "R3-38"
   ],
@@ -45,6 +46,6 @@
     "R2-17 and R2-36 have non-official archival text repairs; the arithmetic check cannot validate the historical original wording.",
     "R2 held six questions are excluded from graded study; still visible in reference-only mode.",
     "R3 and R2 archive wordings and all 240 published-question reuse conditions have not undergone a complete manual review.",
-    "Only twenty-three R2 rationales and four R3 rationales have independent additional explanation review; the remaining explanations are not all audited."
+    "Only twenty-four R2 rationales and eight R3 rationales have independent additional explanation review; the remaining explanations are not all audited."
   ]
 }
