@@ -19,6 +19,7 @@ on:
       - 'scripts/build_question_views.py'
       - 'scripts/build_site.py'
       - 'scripts/validate_site.py'
+      - 'scripts/test_trainer_ui.js'
 
 permissions:
   contents: write
@@ -43,7 +44,7 @@ jobs:
       - name: Build one-question views
         run: python3 scripts/build_question_views.py
 
-      - name: Build v1.3
+      - name: Build v1.4
         run: python3 scripts/build_site.py
 
       - name: Validate 240 questions and one-question views
@@ -63,6 +64,9 @@ jobs:
           node --check .site-check.js
           rm .site-check.js
 
+      - name: Test study, review and mock interactions
+        run: node scripts/test_trainer_ui.js
+
       - name: Commit generated site and views
         run: |
           git config user.name "github-actions[bot]"
@@ -72,6 +76,6 @@ jobs:
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.3 240-question site"
+          git commit -m "Build 下3 trainer v1.4 study-review fixes"
           git pull --rebase origin main
           git push
