@@ -248,13 +248,19 @@ function isWeak(x){
 function startMode(mode){
  let pool=poolFromFilters();
  if(!pool.length){toast("条件に合う問題がありません");return}
- if(mode==="random20")session=shuffle(pool).slice(0,20);
- else if(mode==="weak"){session=pool.filter(isWeak);if(!session.length){toast("この条件の弱点問題はまだありません");return}}
- else if(mode==="mock"){
+ let nextSession;
+ if(mode==="random20")nextSession=shuffle(pool).slice(0,20);
+ else if(mode==="weak"){
+  nextSession=pool.filter(isWeak);
+  if(!nextSession.length){toast("この条件の弱点問題はまだありません");return}
+ }else if(mode==="mock"){
   const y=document.getElementById("yearFilter").value;
   if(y==="ALL"){toast("模試はR7・R6・R3・R2のどれか1年度を選んでください");return}
-  session=[...SETS[y]].sort((a,b)=>a.q-b.q);
- }else session=[...pool].sort((a,b)=>b.year.localeCompare(a.year)||a.q-b.q);
+  nextSession=[...SETS[y]].sort((a,b)=>a.q-b.q);
+ }else nextSession=[...pool].sort((a,b)=>b.year.localeCompare(a.year)||a.q-b.q);
+ if(sessionMode==="mock"&&!mockFinished&&Object.keys(sessionAnswers).length>0
+    &&!confirm("採点前の模試回答は破棄されます。別の学習を開始しますか？"))return;
+ session=nextSession;
  sessionMode=mode;
  pos=0;answeredCurrent=false;
  sessionAnswers=Object.create(null);
@@ -456,7 +462,62 @@ function exportProgress(){
  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gesuido3_progress.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);
 }
-function resetProgress(){if(confirm("学習履歴を全部リセットしますか？")){state={items:{},createdAt:new Date().toISOString()};save();toast("学習履歴をリセットしました")}}
+function validateProgressBackup(payload){
+ if(!payload||typeof payload!=="object"||Array.isArray(payload)||!payload.items||typeof payload.items!=="object"||Array.isArray(payload.items)){
+  throw new Error("学習履歴のJSON形式が違います");
+ }
+ const allowed=new Set(ALL.map(x=>x.id));
+ const entries=Object.entries(payload.items);
+ if(entries.length>ALL.length)throw new Error("保存データの問題数が収録数を超えています");
+ const safeItems={};
+ for(const [id,data] of entries){
+  if(!allowed.has(id))throw new Error("登録外の問題番号があります："+id);
+  if(!data||typeof data!=="object"||Array.isArray(data))throw new Error(id+" の履歴形式が不正です");
+  const attempts=data.attempts,correct=data.correct,wrong=data.wrong;
+  if(![attempts,correct,wrong].every(n=>Number.isSafeInteger(n)&&n>=0&&n<=100000)
+      ||correct+wrong!==attempts)throw new Error(id+" の回答数が一致しません");
+  const choice=data.lastChoice??null,last=data.lastCorrect??null,rating=data.rating??"";
+  if(choice!==null&&![1,2,3,4].includes(choice))throw new Error(id+" の最終回答が不正です");
+  if(last!==null&&typeof last!=="boolean")throw new Error(id+" の最終正誤が不正です");
+  if(!["","ok","maybe","ng"].includes(rating))throw new Error(id+" の弱点評価が不正です");
+  if(attempts===0&&(choice!==null||last!==null))throw new Error(id+" の未回答記録が不正です");
+  if(attempts>0&&(choice===null||last===null))throw new Error(id+" の回答履歴が不足しています");
+  safeItems[id]={attempts,correct,wrong,lastChoice:choice,lastCorrect:last,rating};
+ }
+ return {items:safeItems,createdAt:typeof payload.createdAt==="string"?payload.createdAt:new Date().toISOString()};
+}
+async function importProgress(event){
+ const field=event?.target, file=field?.files?.[0];
+ if(!file)return;
+ try{
+  if(file.size>1024*1024)throw new Error("ファイルが大きすぎます（上限1MB）");
+  const content=await file.text();
+  const incoming=validateProgressBackup(JSON.parse(content));
+  if(!confirm("現在の学習履歴を保存データで上書きします。続けますか？\n未保存なら先に「進捗を保存」を押してください。"))return;
+  state=incoming;
+  session=[];sessionAnswers=Object.create(null);mockFinished=false;sessionMode="";pos=0;answeredCurrent=false;
+  clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
+  document.getElementById("timer").textContent="";
+  document.getElementById("quizCard").classList.add("hidden");
+  document.getElementById("sessionBox").classList.add("hidden");
+  showAllWeak=false;
+  save();
+  toast("学習履歴を復元しました");
+ }catch(err){
+  alert("復元できませんでした："+err.message);
+ }finally{field.value="";}
+}
+function resetProgress(){
+ if(!confirm("学習履歴を全部リセットしますか？\n削除前に進捗データを保存することをおすすめします。"))return;
+ state={items:{},createdAt:new Date().toISOString()};
+ session=[];sessionAnswers=Object.create(null);mockFinished=false;sessionMode="";pos=0;answeredCurrent=false;
+ clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
+ document.getElementById("timer").textContent="";
+ document.getElementById("quizCard").classList.add("hidden");
+ document.getElementById("sessionBox").classList.add("hidden");
+ showAllWeak=false;
+ save();toast("学習履歴をリセットしました");
+}
 (async function init(){
  rebuildCategory();updateDashboard();save();
 })();
