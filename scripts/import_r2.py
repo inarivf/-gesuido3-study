@@ -106,6 +106,46 @@ for i,((stem,opts),answer) in enumerate(zip(sections,KEY),1):
        "trap":"設問文の「適切」「不適切」と条件をよく確認してください。",
        "memo":"解説は確認待ち。問題文と正答は照合済みです。","formula":""
     })
+# Carefully documented repairs of transcription defects in the saved page.
+# Unaltered text is always retained in r2_source_excerpt.txt and SHA256.
+q17=extracted[16]
+if "余剰汚泥量: 160m3/日" not in q17["stem"] or "余剰汚泥のSS濃度: 5,000mg/" not in q17["stem"]:
+    raise RuntimeError("R2 Q17 source changed: require manual verification before repair")
+q17["stem"]=q17["stem"].replace("余剰汚泥量: 160m3/日","余剰汚泥量: 60m3/日").replace(
+    "余剰汚泥のSS濃度: 5,000mg/","余剰汚泥のSS濃度: 5,000mg/L")
+q17["sourceWarning"]=(
+    "保存資料の問17には「160m3/日」「5,000mg/」という転記上の問題があります。"
+    "同一条件・同一選択肢の設問が令和7年度第51回の日本下水道事業団公式問題PDF・問17では"
+    "「60m3/日」「5,000mg/L」となっており、正答12日と整合するため補正しました。"
+    "ただし令和2年度公式原本との直接照合はできていません。"
+)
+q17["explain"]=(
+    "正解は(4)12日。ASRT＝好気タンク固形物量÷1日あたりの引抜き固形物量＝"
+    "(2,000×1,800)÷(60×5,000)＝12日。"
+    "保存サイトの「160m3/日」はこの計算と一致せず、"
+    "令和7年度日本下水道事業団公式問題PDF問17の60m3/日で補正しました。"
+)
+q17["formula"]="(2,000×1,800)÷(60×5,000)＝12日"
+
+q36=extracted[35]
+if "流出水SS濃度: 110mg/0" not in q36["stem"] or "50m m3/日" not in q36["choices"][2]:
+    raise RuntimeError("R2 Q36 source changed: require manual verification before repair")
+q36["stem"]=q36["stem"].replace("流出水SS濃度: 110mg/0","流出水SS濃度: 110mg/L")
+q36["choices"][2]=q36["choices"][2].replace("50m m3/日","50m3/日")
+q36["sourceWarning"]=(
+    "保存ページには「110mg/0」「50m m3/日」という転記誤りがあります。"
+    "同じ数値条件を使う令和3年度第47回問38と、式による計算の整合から単位を補正しました。"
+    "令和2年度公式原本と直接照合したものではありません。"
+)
+q36["explain"]="正解は(1)30m3/日。除去SS量10,000×(200−110)g/m3=900kg/日、固形物濃度3%は約30kg/m3なので900÷30=30m3/日。"
+q36["formula"]="10,000×(200−110)÷30,000＝30m3/日"
+
+# The Q43 archive table header looks corrupted, so preserve it verbatim and warn.
+extracted[42]["sourceWarning"]=(
+    "保存ページの表見出し・選択肢(1)の数値に転記欠落が疑われます。"
+    "正答(3)の表記と独立正答番号は一致していますが、他の選択肢の正確な原文は未検証です。"
+)
+
 doc={
  "source":"令和2年度 第46回 実問題保存版。取得日2026-10-08。",
  "problemSource":SOURCE,"answerSource":INDEPENDENT,
@@ -120,6 +160,8 @@ audit={
  "question_count":60,"choice_count":240,"internal_key_rows":30,"independent_key_rows":60,"key_mismatches":0,
  "text_length":len(text),"source_sha256":doc["source_sha256"],
  "stem_lengths":[len(x[0]) for x in sections],
+ "documented_source_repairs":[17,36],
+ "source_warning_qs":[17,36,43],
  "choice_min_length":min(len(o) for _,opts in sections for o in opts),
  "review_required":"Saved blog text is not the JSWA official PDF. Wording and tables should be visually inspected where the archive has anomalies."
 }
