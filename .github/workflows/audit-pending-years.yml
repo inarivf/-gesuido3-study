@@ -1,0 +1,32 @@
+name: Audit missing-year answer keys and candidates
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/audit-pending-years.yml'
+      - 'research/r4_r5_answer_keys_pending.json'
+      - 'research/candidates/**'
+      - 'scripts/audit_pending_years.py'
+      - 'scripts/test_audit_pending_years.py'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate R4 and R5 answer-key inventories
+        run: python3 scripts/audit_pending_years.py
+      - name: Run release safety tests
+        run: python3 scripts/test_audit_pending_years.py
+      - name: Validate any future source candidates without publishing
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for file in research/candidates/R4-*.json research/candidates/R5-*.json; do
+            echo "Audit candidate: $file"
+            python3 scripts/audit_pending_years.py --candidate "$file"
+          done
