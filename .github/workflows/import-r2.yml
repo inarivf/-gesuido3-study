@@ -1,0 +1,55 @@
+name: Import and audit R2 historical exam
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/import_r2.py'
+      - '.github/workflows/import-r2.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gesuido3-r2-import
+  cancel-in-progress: true
+
+jobs:
+  import_r2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install parser
+        run: python3 -m pip install --quiet beautifulsoup4
+      - name: Extract real R2 questions and check all 60 answers
+        run: python3 scripts/import_r2.py
+      - name: Check extracted R2 metadata
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('r2_meta.json').read_text(encoding='utf-8'))
+          q=p['questions']
+          assert len(q)==60
+          assert [x['q'] for x in q]==list(range(1,61))
+          assert all(len(x['choices'])==4 for x in q)
+          assert all(x['stem'] and all(x['choices']) for x in q)
+          a=json.loads(Path('r2_import_audit.json').read_text(encoding='utf-8'))
+          assert a['result']=='PASS' and a['key_mismatches']==0
+          print('R2 SOURCE AUDIT PASS: 60 questions, 240 choices, 60 answer agreements')
+          PY
+      - name: Commit frozen source and metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add r2_meta.json r2_source_excerpt.txt r2_import_audit.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Freeze verified R2 original 60 questions"
+          git pull --rebase origin main
+          git push
