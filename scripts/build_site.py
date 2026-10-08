@@ -21,6 +21,16 @@ for record in reviews["holds"]:
     q["explanationWarning"]=record["warning"]
     q["reviewStatus"]=record["status"]
 
+# R3 source wording is a normalized archive, not a verbatim official PDF.
+# Overlay only verified rationales and citations, without rewriting source questions.
+r3_reviews=json.loads((ROOT/"research/r3_explanation_review_v001.json").read_text(encoding="utf-8"))
+r3_by_id={q["id"]:q for q in r3["questions"]}
+for record in r3_reviews["reviewed"]:
+    q=r3_by_id[record["id"]]
+    q["explain"]=record["explain"]
+    q["reviewStatus"]=record["status"]
+    q["reviewReferences"]=record["references"]
+
 for name,data in [("R7",r7),("R6",r6),("R3",r3),("R2",r2)]:
     qs=data.get("questions",[])
     if len(qs)!=60:
@@ -50,8 +60,8 @@ if "__R7__" in html or "__R6__" in html or "__R3__" in html or "__R2__" in html:
 
 (ROOT/"index.html").write_text(html,encoding="utf-8")
 manifest={
-    "version":"1.14",
-    "generated_from":["site_template.html","r7_meta.json","r6_meta.json","r3_meta.json","r2_meta.json","research/explanation_review_v001.json","r7_question_map.json","r6_questions/"],
+    "version":"1.15",
+    "generated_from":["site_template.html","r7_meta.json","r6_meta.json","r3_meta.json","r2_meta.json","research/explanation_review_v001.json","research/r3_explanation_review_v001.json","r7_question_map.json","r6_questions/"],
     "question_counts":{"R7":60,"R6":60,"R3":60,"R2":60,"total":240},
     "r7_source":"日本下水道事業団 令和7年度 第51回 第3種 公式問題PDF（1問単位ビュー生成）",
     "r6_source":"保存実問題アーカイブ（1問単位ビュー生成）。正答60問照合済み",
