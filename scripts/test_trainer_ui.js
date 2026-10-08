@@ -461,9 +461,10 @@ info("diagram-dependent R2 Q48 flagged without modifying correct answer");
 
 // v1.10: quality counts and additional checked explanations
 const checks=bootFresh();
-assert.equal(Number(checks.el("reviewedCount").textContent),32);
+assert.equal(Number(checks.el("reviewedCount").textContent),43);
+assert.equal(Number(checks.el("draftCount").textContent),26);
 assert.equal(Number(checks.el("holdCount").textContent),6);
-info("quality dashboard reports 32 independently grounded explanations and six holds");
+info("quality dashboard reports 43 independently grounded explanations and six holds");
 
 checks.run('session=[QUESTION_BY_ID.get("R2-09")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
 checks.run("answer(3)");
@@ -624,6 +625,57 @@ for(const [id,answer,expected,evidence] of [
   assert(calcs.el("formula").classList.contains("hidden")===false,id+" formula missing");
   info(id+" formula and cited calculation are shown only after answering");
 }
-console.log("UI REGRESSION PASS: 48 scenarios");
+// v1.17: full R2 coverage, verified versus unverified draft boundaries.
+const bulk=bootFresh();
+assert.equal(bulk.run('ALL.filter(x=>x.year==="R2" && x.reviewStatus==="source_checked").length + ALL.filter(x=>x.year==="R2"&&x.reviewStatus==="calculation_checked").length'),28);
+assert.equal(bulk.run('ALL.filter(x=>x.year==="R2"&&x.reviewStatus==="explanation_draft").length'),26);
+assert.equal(bulk.run('ALL.filter(x=>x.year==="R2"&&isReferenceOnly(x)).length'),6);
+assert.equal(Number(bulk.el("reviewedCount").textContent),43);
+assert.equal(Number(bulk.el("draftCount").textContent),26);
+info("R2 coverage: 28 verified, 26 unverified drafts, 6 reference-only source holds");
+
+for(const [id,answer,support] of [
+  ["R3-06",2,"7.5kW"],
+  ["R3-07",3,"敷地外"],
+  ["R3-33",3,"時間計画保全"],
+  ["R3-51",1,"二酸化炭素"],
+  ["R3-55",3,"6か月以内"],
+  ["R3-57",1,"酸化性物質"],
+  ["R3-60",4,"3年間"],
+  ["R2-49",4,"管1本"],
+  ["R2-54",4,"7.5kW"],
+  ["R2-55",1,"10ppm"],
+  ["R2-59",2,"50人以上"],
+]){
+  bulk.run('session=[QUESTION_BY_ID.get("'+id+'")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+  assert(bulk.el("explanationReferences").classList.contains("hidden"),id+" reference leaked before answer");
+  bulk.run("answer("+answer+")");
+  assert(bulk.el("explain").textContent.includes(support),id+" evidence-backed rationale missing");
+  assert(bulk.el("explanationAuditNote").textContent.includes("内容確認済み"),id+" incorrectly marked as provisional");
+  assert(bulk.el("explanationReferences").innerHTML.includes("https://"),id+" reference link missing");
+}
+info("11 added R2/R3 statute and safety explanations display evidence after answers");
+
+for(const [id,answer,keyword] of [
+  ["R2-18",2,"酸素消費"],
+  ["R2-21",4,"間接加熱式"],
+  ["R2-29",4,"汚泥発生量"],
+  ["R2-41",4,"転記崩れ"],
+  ["R2-56",2,"閉路"],
+]){
+  bulk.run('session=[QUESTION_BY_ID.get("'+id+'")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+  if(id==="R2-41")assert(bulk.el("sourceNotice").innerHTML.includes("元文の要確認箇所"));
+  bulk.run("answer("+answer+")");
+  assert(bulk.el("explain").textContent.includes(keyword),id+" rationale missing");
+  assert(bulk.el("explanationAuditNote").textContent.includes("解説案"),id+" draft falsely marked verified");
+  assert.equal(bulk.el("explanationReferences").innerHTML,"",id+" draft should not invent sources");
+}
+info("26 R2 provisional explanations are labeled as unverified and supply no fake references");
+bulk.run('session=[QUESTION_BY_ID.get("R2-15")];pos=0;sessionMode="reference";sessionAnswers=Object.create(null);render()');
+assert(bulk.el("sourceNotice").innerHTML.includes("採点対象外"));
+assert(bulk.el("explanationAuditNote").textContent.includes("参考扱い"));
+info("R2 six original-text holds remain reference-only after batch expansion");
+
+console.log("UI REGRESSION PASS: 52 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
