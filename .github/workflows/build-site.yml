@@ -70,4 +70,5 @@ jobs:
             exit 0
           fi
           git commit -m "Build 下3 trainer v1.2 180-question site"
+          git pull --rebase origin main
           git push
