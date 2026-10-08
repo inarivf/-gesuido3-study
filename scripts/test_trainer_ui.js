@@ -536,6 +536,34 @@ assert.equal(validate.mockHistory[0].total,54);
 assert.equal(validate.mockHistory[1].total,60);
 info("legacy 60-point and current 54-point R2 score backups both validate");
 
-console.log("UI REGRESSION PASS: 35 scenarios");
+// v1.12: old answers to held questions must NOT pollute new statistics.
+const historical=bootFresh();
+historical.run('state={items:{"R2-10":{attempts:100,correct:100,wrong:0,lastChoice:3,lastCorrect:true,rating:"ng"},"R7-01":{attempts:2,correct:1,wrong:1,lastChoice:4,lastCorrect:true,rating:"ok"}},mockHistory:[]};updateDashboard()');
+assert.equal(Number(historical.el("statAnswered").textContent),1);
+assert.equal(historical.el("statAccuracy").textContent,"50%");
+assert.equal(Number(historical.el("statWeak").textContent),0);
+assert.equal(Number(historical.el("statTotal").textContent),240);
+assert.equal(historical.run('state.items["R2-10"].attempts'),100);
+info("legacy attempts on held exam items survive but are excluded from study totals");
+
+const statsHtml=historical.el("categoryStats").innerHTML;
+const categoryCounts=[...statsHtml.matchAll(/(\\d+)\\/(\\d+)問/g)].map(x=>Number(x[2]));
+assert.equal(categoryCounts.reduce((a,b)=>a+b,0),234,"all category denominators should total 234");
+const legacyCategory=historical.run('QUESTION_BY_ID.get("R2-10").category');
+assert.equal(historical.run('getStudyRecommendation().category===QUESTION_BY_ID.get("R2-10").category&&getStudyRecommendation().weak>0'),false);
+info("category coverage uses 234 graded questions, not 240 archival records");
+
+// Existing 60-point R2 history must be explicitly labeled and never
+// directly compared against modern 54-point reference-exam attempts.
+historical.run('state.mockHistory='+JSON.stringify(payload.mockHistory)+';updateDashboard()');
+const historyMarkup=historical.el("mockHistory").innerHTML;
+assert(historyMarkup.includes("54点参考模試"));
+assert(historyMarkup.includes("旧60点方式・参考"));
+assert(historyMarkup.includes("原本確認待ち6問を含む旧採点"));
+assert(!historyMarkup.includes("前回比："));
+assert.equal(historical.run("state.mockHistory.length"),2);
+info("legacy and modern R2 exam records are preserved and clearly distinguished");
+
+console.log("UI REGRESSION PASS: 38 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
