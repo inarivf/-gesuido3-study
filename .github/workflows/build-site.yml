@@ -20,6 +20,8 @@ on:
       - 'scripts/build_site.py'
       - 'scripts/validate_site.py'
       - 'scripts/test_trainer_ui.js'
+      - 'research/explanation_review_v001.json'
+      - 'scripts/validate_explanation_reviews.py'
 
 permissions:
   contents: write
@@ -44,7 +46,10 @@ jobs:
       - name: Build one-question views
         run: python3 scripts/build_question_views.py
 
-      - name: Build v1.8
+      - name: Audit verified explanations
+        run: python3 scripts/validate_explanation_reviews.py
+
+      - name: Build v1.9
         run: python3 scripts/build_site.py
 
       - name: Validate 240 questions and one-question views
@@ -76,6 +81,6 @@ jobs:
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.8 guided study and explanation audit notices"
+          git commit -m "Build 下3 trainer v1.9 reviewed explanations and damaged-source warnings"
           git pull --rebase origin main
           git push
