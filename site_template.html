@@ -452,6 +452,7 @@ function render(){
   note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 元資料の転記に注意：</b> '+escapeHtml(x.sourceWarning)+'</div>';
  }
  document.getElementById("reveal").classList.remove("show");
+ document.getElementById("explanationAuditNote").textContent="";
  document.querySelectorAll(".choice").forEach(b=>{b.className="choice";b.disabled=mockFinished});
  document.getElementById("prevBtn").disabled=pos===0;
  document.getElementById("nextBtn").disabled=pos===session.length-1;
