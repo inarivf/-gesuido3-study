@@ -482,6 +482,60 @@ assert(checks.el("sourceNotice").innerHTML.includes("無関係な文字列"));
 assert.equal(checks.run('QUESTION_BY_ID.get("R2-30").answer'),2);
 info("R2 Q30 archival text contamination is exposed before answering");
 
-console.log("UI REGRESSION PASS: 31 scenarios");
+// v1.11: suspected source questions must NEVER influence real practice results.
+const exclusion=bootFresh();
+assert.equal(exclusion.run('ALL.filter(isReferenceOnly).length'),6);
+assert.equal(exclusion.run('poolFromFilters().length'),234);
+exclusion.run('startMode("random20")');
+assert.equal(exclusion.run('session.some(isReferenceOnly)'),false);
+exclusion.run('startMode("priority10")');
+assert.equal(exclusion.run('session.some(isReferenceOnly)'),false);
+info("all normal study pools and priority picks exclude six suspect exam questions");
+
+const beforeHistory=exclusion.run('Object.keys(state.items).length');
+exclusion.run('startMode("reference")');
+assert.equal(exclusion.run("session.length"),6);
+assert.equal(exclusion.run("session.every(isReferenceOnly)"),true);
+assert.equal(exclusion.run("q().id"),"R2-10");
+assert(exclusion.el("sourceNotice").innerHTML.includes("採点対象外"));
+assert(exclusion.el("reveal").classList.contains("show"));
+assert(exclusion.buttons.every(b=>b.disabled));
+exclusion.run("answer(1)");
+assert.equal(exclusion.run('Object.keys(state.items).length'),beforeHistory);
+info("the six disputed questions are accessible as read-only reference, no scored attempts");
+
+// The R2 historic 60-question session stays viewable with 54 graded questions.
+exclusion.el("yearFilter").value="R2";
+exclusion.run('startMode("mock")');
+assert.equal(exclusion.run("session.length"),60);
+assert.equal(exclusion.run('gradedTotal("R2")'),54);
+exclusion.run("pos=9;render()");
+assert.equal(exclusion.run("q().id"),"R2-10");
+exclusion.run("answer(1)");
+exclusion.run("pos=14;render()");
+exclusion.run("answer(3)");
+exclusion.run("pos=0;render()");
+exclusion.run("answer(2)");
+exclusion.run('finishMock("manual")');
+assert.equal(exclusion.run("state.mockHistory[0].total"),54);
+assert.equal(exclusion.run("state.mockHistory[0].score"),1);
+assert.equal(exclusion.run("state.mockHistory[0].blankIds.length"),53);
+assert.equal(exclusion.run('state.items["R2-10"]?.attempts||0'),0);
+assert.equal(exclusion.run('state.items["R2-15"]?.attempts||0'),0);
+assert(exclusion.el("mockResult").textContent.includes("1 / 54点"));
+assert(exclusion.el("mockResult").textContent.includes("6問は採点対象外"));
+info("R2 mock displays 60 questions while excluding six ambiguous ones from 54-point results");
+
+// Existing 60-point R2 backup history remains readable without comparing unlike scores.
+const result54=JSON.parse(exclusion.run('JSON.stringify(state.mockHistory[0])'));
+const legacy={...result54,runKey:"legacy-r2-60-test",total:60,blankIds:[...result54.blankIds,"R2-10","R2-15","R2-24","R2-30","R2-43","R2-48"]};
+const payload={items:{},mockHistory:[result54,legacy]};
+const validate=exclusion.run('validateProgressBackup('+JSON.stringify(payload)+')');
+assert.equal(validate.mockHistory.length,2);
+assert.equal(validate.mockHistory[0].total,54);
+assert.equal(validate.mockHistory[1].total,60);
+info("legacy 60-point and current 54-point R2 score backups both validate");
+
+console.log("UI REGRESSION PASS: 35 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
