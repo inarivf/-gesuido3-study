@@ -123,7 +123,7 @@ if not errors:
             fail(f"R2 Q{n} missing original-source warning")
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
-        "v1.5","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
+        "v1.6","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
@@ -163,4 +163,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.5, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
+print("VALIDATION PASS: v1.6, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
