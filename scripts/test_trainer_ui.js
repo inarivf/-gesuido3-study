@@ -547,7 +547,7 @@ assert.equal(historical.run('state.items["R2-10"].attempts'),100);
 info("legacy attempts on held exam items survive but are excluded from study totals");
 
 const statsHtml=historical.el("categoryStats").innerHTML;
-const categoryCounts=[...statsHtml.matchAll(/(\\d+)\\/(\\d+)問/g)].map(x=>Number(x[2]));
+const categoryCounts=[...statsHtml.matchAll(/(\d+)\/(\d+)問/g)].map(x=>Number(x[2]));
 assert.equal(categoryCounts.reduce((a,b)=>a+b,0),234,"all category denominators should total 234");
 const legacyCategory=historical.run('QUESTION_BY_ID.get("R2-10").category');
 assert.equal(historical.run('getStudyRecommendation().category===QUESTION_BY_ID.get("R2-10").category&&getStudyRecommendation().weak>0'),false);
