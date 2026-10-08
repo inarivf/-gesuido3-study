@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "reviewDate": "2026-10-08",
   "policy": "独立一次資料または式の再計算で確認できた解説のみ上書きする。正答・4択原文の変更は禁止。状態不明の問題を検証済みに昇格しない。",
   "reviewed": [
@@ -126,6 +126,20 @@
       "rationale": "2026-10-08：保存実問題の選択肢と上記公的資料を照合"
     },
     {
+      "id": "R2-17",
+      "status": "calculation_checked",
+      "kind": "calculation",
+      "explain": "好気的固形物滞留時間（ASRT）は、好気タンク内の固形物量を、1日あたりに系外へ排出する固形物量で割って求める。タンク内の固形物量は2,000m³×1,800mg/L＝3,600kg、余剰汚泥として排出する量は60m³/日×5,000mg/L＝300kg/日。したがって3,600÷300＝12日となり、正答は（4）。m³とmg/Lをそのまま掛けず、単位をkgにそろえるのがポイント。",
+      "formula": "(2000 × 1800) ÷ (60 × 5000) = 12日",
+      "references": [
+        {
+          "title": "日本下水道事業団 ASRT算定式",
+          "url": "https://www.jswa.go.jp/company/shuupan/mizusumashi/pdf3/101.pdf"
+        }
+      ],
+      "rationale": "公式のASRT式で処理水SS無視の条件を照合し12日と再計算"
+    },
+    {
       "id": "R2-22",
       "status": "source_checked",
       "kind": "technical",
@@ -137,6 +151,23 @@
         }
       ],
       "rationale": "2026-10-08：保存実問題の選択肢と上記公的資料を照合"
+    },
+    {
+      "id": "R2-23",
+      "status": "source_checked",
+      "kind": "technical",
+      "explain": "正答は（2）。高分子凝集剤の選定では、汚泥の性状や変動に対応できることが重要。薬注率の許容範囲が広ければ、汚泥の性状が多少変わっても適切な凝集状態を保ちやすい。一方、フロックが弱い（1）、脱水ろ液のSSが多い（3）、必要な薬注率が大きい（4）は、いずれも望ましい選定条件ではない。",
+      "references": [
+        {
+          "title": "日本水環境学会 高分子凝集剤の最適薬注率",
+          "url": "https://www.jstage.jst.go.jp/article/jswe/42/6/42_269/_article/-char/ja"
+        },
+        {
+          "title": "東京都下水道サービス 汚泥性状に応じた凝集剤の選定",
+          "url": "https://www.tgs-sw.co.jp/business/treatment/c01/c01/"
+        }
+      ],
+      "rationale": "査読論文と下水道事業者の選定条件を照合。薬注率許容幅の広さを評価"
     },
     {
       "id": "R2-31",
