@@ -634,6 +634,34 @@ function exportProgress(){
  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gesuido3_progress.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);
 }
+function validateMockHistory(value){
+ if(value===undefined)return [];
+ if(!Array.isArray(value)||value.length>MAX_MOCK_HISTORY)throw new Error("模試履歴の件数が不正です");
+ const seen=new Set();
+ return value.map((rec,i)=>{
+  if(!rec||typeof rec!=="object"||Array.isArray(rec))throw new Error("模試履歴の形式が不正です");
+  const {runKey,year,finishedAt,score,total,wrongIds,blankIds,reason}=rec;
+  if(typeof runKey!=="string"||runKey.length<5||runKey.length>120||seen.has(runKey))
+    throw new Error("模試履歴の識別子が不正です");
+  seen.add(runKey);
+  if(!["R7","R6","R3","R2"].includes(year)||total!==60||!Number.isInteger(score)||score<0||score>60)
+    throw new Error("模試の年度・得点が不正です");
+  if(typeof finishedAt!=="string"||!Number.isFinite(Date.parse(finishedAt)))
+    throw new Error("模試の日付が不正です");
+  if(!["time","manual"].includes(reason))throw new Error("模試の終了理由が不正です");
+  if(!Array.isArray(wrongIds)||!Array.isArray(blankIds))throw new Error("模試の誤答一覧が不正です");
+  const permitted=new Set(SETS[year].map(x=>x.id));
+  const used=new Set();
+  for(const id of [...wrongIds,...blankIds]){
+   if(typeof id!=="string"||!permitted.has(id)||used.has(id))
+     throw new Error("模試の問題番号が不正または重複しています");
+   used.add(id);
+  }
+  if(score+wrongIds.length+blankIds.length!==60)throw new Error("模試の得点と誤答数が一致しません");
+  return {runKey,year,finishedAt,score,total,wrongIds:[...wrongIds],blankIds:[...blankIds],reason};
+ });
+}
+
 function validateProgressBackup(payload){
  if(!payload||typeof payload!=="object"||Array.isArray(payload)||!payload.items||typeof payload.items!=="object"||Array.isArray(payload.items)){
   throw new Error("学習履歴のJSON形式が違います");
@@ -656,7 +684,14 @@ function validateProgressBackup(payload){
   if(attempts>0&&(choice===null||last===null))throw new Error(id+" の回答履歴が不足しています");
   safeItems[id]={attempts,correct,wrong,lastChoice:choice,lastCorrect:last,rating};
  }
- return {items:safeItems,createdAt:typeof payload.createdAt==="string"?payload.createdAt:new Date().toISOString()};
+ const mockHistory=validateMockHistory(payload.mockHistory);
+ const lastGraded=payload.lastGradedMockKey??"";
+ if(typeof lastGraded!=="string"||lastGraded.length>120)
+  throw new Error("模試の採点履歴識別子が不正です");
+ return {
+  items:safeItems,createdAt:typeof payload.createdAt==="string"?payload.createdAt:new Date().toISOString(),
+  mockHistory,lastGradedMockKey:lastGraded
+ };
 }
 async function importProgress(event){
  const field=event?.target, file=field?.files?.[0];
