@@ -55,7 +55,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.11</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.12</span>
 <h1>💧 下3トレーナー</h1>
 <p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
@@ -68,8 +68,8 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <section class="card">
 <h2>学習状況</h2>
 <div class="dashboard">
-<div class="statbox"><strong id="statAnswered">0</strong><span>回答した問題</span></div>
-<div class="statbox"><strong id="statAccuracy">--</strong><span>通算正答率</span></div>
+<div class="statbox"><strong id="statAnswered">0</strong><span>回答した問題<br><small>採点対象234問中</small></span></div>
+<div class="statbox"><strong id="statAccuracy">--</strong><span>通算正答率<br><small>採点対象のみ</small></span></div>
 <div class="statbox"><strong id="statWeak">0</strong><span>弱点問題</span></div>
 <div class="statbox"><strong id="statTotal">240</strong><span>実過去問</span></div>
 </div>
@@ -77,7 +77,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 
 <section class="card">
 <h2>分野別の学習状況</h2>
-<p class="muted">各分野で何問解いたかと、累計正答率を表示。まだ解いていない分野もわかります。</p>
+<p class="muted">採点対象234問について、分野別の回答済み問題数と累計正答率を表示。原本確認待ち6問は、過去に回答履歴があっても集計から除外します。</p>
 <div id="categoryStats" class="category-stats" aria-live="polite"></div>
 </section>
 
@@ -132,7 +132,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 
 <section class="card">
 <h2>📊 模試の成績記録</h2>
-<p class="muted">採点が終わった模試の点数を新しい順に保存。前回の同じ年度との差も表示します。結果はこの端末内に保存され、進捗JSONにも含まれます。</p>
+<p class="muted">採点が終わった模試の点数を新しい順に保存。前回の同年度・同じ満点数の結果とだけ比較します。R2の旧60点満点と新54点満点は比較しません。結果は端末内に保存され、進捗JSONにも含まれます。</p>
 <div id="mockHistory" class="exam-history" aria-live="polite"></div>
 </section>
 
@@ -620,7 +620,9 @@ function rebuildCategory(){
 function updateDashboard(){
  document.getElementById("reviewedCount").textContent=ALL.filter(x=>x.reviewStatus==="source_checked"||x.reviewStatus==="calculation_checked").length;
  document.getElementById("holdCount").textContent=ALL.filter(x=>x.reviewStatus==="source_damaged"||x.reviewStatus==="figure_unverified"||x.reviewStatus==="answer_needs_review").length;
- const vals=Object.values(state.items);
+ // Preserve every legacy record in localStorage, but never count answers
+ // to held original questions in the current learning statistics.
+ const vals=scoredQuestions(ALL).map(x=>state.items[x.id]).filter(Boolean);
  const answered=vals.filter(x=>x.attempts>0).length;
  const attempts=vals.reduce((n,x)=>n+(x.attempts||0),0);
  const correct=vals.reduce((n,x)=>n+(x.correct||0),0);
@@ -652,10 +654,10 @@ function renderMockHistory(){
   const date=new Date(rec.finishedAt);
   const stamp=Number.isFinite(date.getTime())?date.toLocaleString("ja-JP"):"日時不明";
   const pct=Math.round(rec.score/rec.total*100);
-  return '<div class="exam-record"><div class="exam-top"><b>'+escapeHtml(rec.year)+(rec.year==="R2"?'（参考）':'')+'　'+rec.score+'/'+rec.total+'点</b><span class="exam-details">'+escapeHtml(stamp)+escapeHtml(diff)+'</span></div>'+
+  return '<div class="exam-record"><div class="exam-top"><b>'+escapeHtml(rec.year)+(rec.year==="R2"?(rec.total===60?'（旧60点方式・参考）':'（54点参考模試）'):'')+'　'+rec.score+'/'+rec.total+'点</b><span class="exam-details">'+escapeHtml(stamp)+escapeHtml(diff)+'</span></div>'+
    '<div class="exam-track"><i style="width:'+pct+'%"></i></div>'+
    '<div class="exam-details">誤答：'+rec.wrongIds.length+'問　未回答：'+rec.blankIds.length+'問'+
-   (rec.reason==="time"?'　時間切れ':'')+'</div>'+
+   (rec.reason==="time"?'　時間切れ':'')+(rec.year==="R2"&&rec.total===60?'　※原本確認待ち6問を含む旧採点':'')+'</div>'+
    (rec.wrongIds.length?'<button class="btn good" style="margin-top:8px" onclick="startMistakeReview('+i+')">この回の誤答'+rec.wrongIds.length+'問を解く</button>':'')+
    '</div>';
  }).join("");
@@ -734,7 +736,7 @@ function startRecommendedStudy(){
 function toggleWeakList(){showAllWeak=!showAllWeak;updateDashboard()}
 function updateCategoryStats(){
  const buckets=new Map();
- for(const x of ALL){
+ for(const x of scoredQuestions(ALL)){
   const category=x.category||"未分類";
   if(!buckets.has(category))buckets.set(category,{name:category,total:0,answered:0,attempts:0,correct:0});
   const b=buckets.get(category);b.total++;
