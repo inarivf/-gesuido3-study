@@ -123,11 +123,11 @@ if not errors:
             fail(f"R2 Q{n} missing original-source warning")
     # The explanation overlay must change rationale only, never original questions or answers.
     reviews=json.loads((ROOT/"research/explanation_review_v001.json").read_text(encoding="utf-8"))
-    assert len(reviews["reviewed"])==18 and len(reviews["holds"])==6
+    assert len(reviews["reviewed"])==20 and len(reviews["holds"])==6
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
         "studyRecommendation","explanationAuditNote","explanationReferences","reviewedCount","holdCount",
-        "v1.12","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
+        "v1.13","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
