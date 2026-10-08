@@ -55,7 +55,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.5</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.6</span>
 <h1>💧 下3トレーナー</h1>
 <p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
@@ -82,6 +82,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <button class="mode" onclick="startMode('sequential')"><b>📚 年度順に解く</b><small>選んだ年度・分野を問番号順に進める。</small></button>
 <button class="mode" onclick="startMode('random20')"><b>⚡ ランダム20問</b><small>R7・R6・R3・R2を混ぜてもOK。短時間で回す。</small></button>
 <button class="mode" onclick="startMode('weak')"><b>🩹 弱点だけ復習</b><small>直近で間違えた・怪しい・未理解の問題。</small></button>
+<button class="mode" onclick="startMode('priority10')"><b>🧠 今日の重点10問</b><small>苦手や未回答を優先。10問だけ集中して復習。</small></button>
 <button class="mode" onclick="startMode('mock')"><b>⏱ 60問 模試</b><small>年度を1つ選び、3時間15分で本番形式。</small></button>
 </div>
 <div class="row" style="margin-top:12px">
@@ -95,6 +96,15 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 </select></label>
 <label>分野<select id="catFilter"><option value="ALL">全部</option></select></label>
 <button class="btn primary" onclick="startMode('filtered')">この条件で全部</button>
+</div>
+</section>
+
+<section id="resumeMockBox" class="session hidden" aria-live="polite">
+<div class="sessiontop">📝 途中の模試があります</div>
+<p class="muted" id="resumeMockInfo"></p>
+<div class="row">
+<button class="btn primary" onclick="resumeMock()">続きから再開</button>
+<button class="btn bad" onclick="discardSavedMock()">途中データを破棄</button>
 </div>
 </section>
 
@@ -186,6 +196,8 @@ const R2_QUESTIONS=[{"id":"R2-01","year":"R2","yearLabel":"令和2年度・第46
 const SETS={R7:R7_QUESTIONS,R6:R6_QUESTIONS,R3:R3_QUESTIONS,R2:R2_QUESTIONS};
 const ALL=[...R7_QUESTIONS,...R6_QUESTIONS,...R3_QUESTIONS,...R2_QUESTIONS];
 const STATE_KEY="gesuido3_progress_v1";
+const MOCK_KEY="gesuido3_mock_draft_v1";
+const MOCK_DURATION_MS=195*60*1000;
 let state=loadState();
 let session=[];
 let pos=0;
@@ -196,6 +208,7 @@ let answeredCurrent=false;
 let sessionAnswers=Object.create(null);
 let mockFinished=false;
 let showAllWeak=false;
+let mockRunKey="";
 
 function loadState(){
  try{
@@ -245,11 +258,96 @@ function isWeak(x){
  const s=state.items[x.id];
  return !!s&&(s.rating==="ng"||s.rating==="maybe"||(s.rating!=="ok"&&s.lastCorrect===false));
 }
+function priorityScore(x){
+ const s=state.items[x.id];
+ if(!s)return 20;
+ if(!s.attempts&&!(["ng","maybe","ok"].includes(s.rating)))return 20;
+ let score=0;
+ if(s.rating==="ok")return -100;
+ if(s.rating==="ng")score+=110;
+ else if(s.rating==="maybe")score+=90;
+ else if(s.rating==="ok")score-=35;
+ if(s.lastCorrect===false)score+=65;
+ const attempts=s.attempts||0,wrong=s.wrong||0;
+ score+=Math.min(40,wrong*9);
+ score+=Math.round(25*wrong/Math.max(1,attempts));
+ return score;
+}
+function prioritizedQuestions(pool,limit){
+ return shuffle(pool).sort((a,b)=>priorityScore(b)-priorityScore(a)).slice(0,limit);
+}
+function getPendingMock(){
+ try{
+  const value=localStorage.getItem(MOCK_KEY);
+  if(!value)return null;
+  const d=JSON.parse(value);
+  if(!d||d.version!==1||!["R7","R6","R3","R2"].includes(d.year)
+      ||!Number.isFinite(d.deadline)||!Number.isFinite(d.startedAt)
+      ||!Number.isInteger(d.pos)||d.pos<0||d.pos>=60
+      ||typeof d.runKey!=="string"||d.runKey.length<5||d.runKey.length>120
+      ||!d.answers||typeof d.answers!=="object"||Array.isArray(d.answers))return null;
+  if(state.lastGradedMockKey===d.runKey)return null;
+  const permitted=new Set(SETS[d.year].map(x=>x.id));
+  const entries=Object.entries(d.answers);
+  if(entries.length>60||entries.some(([id,rec])=>
+    !permitted.has(id)||!rec||!Number.isInteger(rec.choice)||rec.choice<1||rec.choice>4
+  ))return null;
+  return d;
+ }catch(e){return null}
+}
+function updateResumeNotice(){
+ const d=getPendingMock();
+ const box=document.getElementById("resumeMockBox");
+ box.classList.toggle("hidden",!d);
+ if(!d)return;
+ const answered=Object.keys(d.answers).length;
+ const expired=Date.now()>=d.deadline;
+ document.getElementById("resumeMockInfo").textContent=
+  d.year+" 第"+({"R7":51,"R6":50,"R3":47,"R2":46}[d.year])+"回　"
+  +answered+"/60問 回答済み　"+(expired?"制限時間終了（再開すると採点）":"残り約"+Math.ceil((d.deadline-Date.now())/60000)+"分");
+}
+function clearMockDraft(){
+ try{localStorage.removeItem(MOCK_KEY)}catch(e){}
+ updateResumeNotice();
+}
+function saveMockDraft(){
+ if(sessionMode!=="mock"||mockFinished)return;
+ try{
+  localStorage.setItem(MOCK_KEY,JSON.stringify({
+   version:1,year:session[0].year,startedAt:timerEndsAt-MOCK_DURATION_MS,
+   deadline:timerEndsAt,pos,runKey:mockRunKey,answers:sessionAnswers
+  }));
+  updateResumeNotice();
+  document.getElementById("resumeMockBox").classList.add("hidden");
+ }catch(e){toast("端末の保存領域に書き込めません。模試の途中保存ができません")}
+}
+function resumeMock(){
+ const d=getPendingMock();
+ if(!d){toast("再開できる模試がありません");updateResumeNotice();return}
+ const y=document.getElementById("yearFilter");
+ y.value=d.year;rebuildCategory();
+ session=[...SETS[d.year]].sort((a,b)=>a.q-b.q);
+ sessionMode="mock";sessionAnswers=Object.assign(Object.create(null),d.answers);
+ pos=d.pos;mockRunKey=d.runKey;mockFinished=false;answeredCurrent=false;
+ document.getElementById("mockResult").classList.add("hidden");
+ document.getElementById("finishMockBtn").classList.remove("hidden");
+ document.getElementById("quizCard").classList.remove("hidden");
+ document.getElementById("sessionBox").classList.remove("hidden");
+ document.getElementById("resumeMockBox").classList.add("hidden");
+ render();
+ startTimer(true,d.deadline);
+}
+function discardSavedMock(){
+ if(!confirm("途中の模試データを破棄しますか？回答は採点されません。"))return;
+ clearMockDraft();toast("途中の模試を破棄しました");
+}
+
 function startMode(mode){
  let pool=poolFromFilters();
  if(!pool.length){toast("条件に合う問題がありません");return}
  let nextSession;
  if(mode==="random20")nextSession=shuffle(pool).slice(0,20);
+ else if(mode==="priority10")nextSession=prioritizedQuestions(pool,10);
  else if(mode==="weak"){
   nextSession=pool.filter(isWeak);
   if(!nextSession.length){toast("この条件の弱点問題はまだありません");return}
@@ -258,32 +356,36 @@ function startMode(mode){
   if(y==="ALL"){toast("模試はR7・R6・R3・R2のどれか1年度を選んでください");return}
   nextSession=[...SETS[y]].sort((a,b)=>a.q-b.q);
  }else nextSession=[...pool].sort((a,b)=>b.year.localeCompare(a.year)||a.q-b.q);
- if(sessionMode==="mock"&&!mockFinished&&Object.keys(sessionAnswers).length>0
-    &&!confirm("採点前の模試回答は破棄されます。別の学習を開始しますか？"))return;
+ const saved=getPendingMock();
+ if((saved||sessionMode==="mock"&&!mockFinished)
+    &&!confirm("途中の模試は破棄されます。別の学習を開始しますか？"))return;
+ if(saved)clearMockDraft();
  session=nextSession;
  sessionMode=mode;
  pos=0;answeredCurrent=false;
  sessionAnswers=Object.create(null);
  mockFinished=false;
+ mockRunKey=mode==="mock"?String(Date.now())+"-"+nextSession[0].year+"-"+Math.random().toString(36).slice(2):"";
  document.getElementById("mockResult").classList.add("hidden");
  document.getElementById("mockResult").textContent="";
  document.getElementById("finishMockBtn").classList.toggle("hidden",mode!=="mock");
  startTimer(mode==="mock");
+ if(mode==="mock")saveMockDraft();
  document.getElementById("quizCard").classList.remove("hidden");
  document.getElementById("sessionBox").classList.remove("hidden");
  render();
 }
-function startTimer(on){
+function startTimer(on,existingDeadline=null){
  clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
  if(!on){document.getElementById("timer").textContent="";return}
- timerEndsAt=Date.now()+195*60*1000;
+ timerEndsAt=existingDeadline===null?Date.now()+MOCK_DURATION_MS:existingDeadline;
  const tick=()=>{
   const left=Math.max(0,timerEndsAt-Date.now());
   const sec=Math.floor(left/1000),h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
   document.getElementById("timer").textContent=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
   if(left<=0){clearInterval(timerHandle);if(sessionMode==="mock"&&!mockFinished)finishMock("time")}
  };
- tick();timerHandle=setInterval(tick,1000);
+ tick();if(sessionMode==="mock"&&!mockFinished)timerHandle=setInterval(tick,1000);
 }
 function render(){
  if(!session.length)return;
@@ -291,7 +393,7 @@ function render(){
  answeredCurrent=!!sessionAnswers[x.id]&&(sessionMode!=="mock"||mockFinished);
  document.getElementById("qLabel").textContent=x.yearLabel+"　問"+x.q;
  document.getElementById("qMeta").textContent=x.category+" ｜ "+x.title;
- document.getElementById("sessionLabel").textContent=sessionMode==="mock"?"模試":sessionMode==="random20"?"ランダム20問":sessionMode==="weak"?"弱点復習":"演習";
+ document.getElementById("sessionLabel").textContent=sessionMode==="mock"?"模試":sessionMode==="random20"?"ランダム20問":sessionMode==="priority10"?"重点10問":sessionMode==="weak"?"弱点復習":"演習";
  document.getElementById("sessionCount").textContent=(pos+1)+" / "+session.length+(sessionMode==="mock"?"　回答済み："+Object.keys(sessionAnswers).length+"/"+session.length:"");
  document.getElementById("sessionProgress").style.width=((pos+1)/session.length*100)+"%";
  const jump=document.getElementById("jumpSelect");jump.innerHTML="";
@@ -363,6 +465,7 @@ function answer(a){
   sessionAnswers[x.id]={choice:a};
   document.querySelectorAll(".choice").forEach(b=>b.classList.toggle("selected",Number(b.dataset.a)===a));
   document.getElementById("sessionCount").textContent=(pos+1)+" / "+session.length+"　回答済み："+Object.keys(sessionAnswers).length+"/"+session.length;
+  saveMockDraft();
   return;
  }
  answeredCurrent=true;
@@ -378,6 +481,9 @@ function finishMock(reason){
  if(reason==="manual"&&!confirm("模試を終了して採点しますか？未回答の問題は0点になります。"))return;
  mockFinished=true;
  clearInterval(timerHandle);timerHandle=null;
+ if(state.lastGradedMockKey===mockRunKey&&mockRunKey){
+  clearMockDraft();return;
+ }
  document.getElementById("finishMockBtn").classList.add("hidden");
  let correct=0,wrong=0;
  for(const x of session){
@@ -389,10 +495,12 @@ function finishMock(reason){
   if(ok){correct++;s.correct++}else{wrong++;s.wrong++;s.rating="ng"}
  }
  const blank=session.length-correct-wrong;
+ state.lastGradedMockKey=mockRunKey;
  const result=document.getElementById("mockResult");
  result.textContent="模試結果："+correct+" / "+session.length+"点　誤答："+wrong+"問　未回答："+blank+"問"+(reason==="time"?"（制限時間終了）":"");
  result.classList.remove("hidden");
  save();
+ clearMockDraft();
  render();
 }
 function rate(r){
@@ -400,13 +508,13 @@ function rate(r){
  const x=q(),s=itemState(x.id);s.rating=r;save();
  toast(r==="ok"?"覚えたにしました":r==="maybe"?"怪しいにしました":"弱点にしました");
 }
-function move(d){const n=pos+d;if(n<0||n>=session.length)return;pos=n;render()}
+function move(d){const n=pos+d;if(n<0||n>=session.length)return;pos=n;if(sessionMode==="mock"&&!mockFinished)saveMockDraft();render()}
 function jumpQuestion(){
  if(!session.length)return;
  const x=q(),n=Number(document.getElementById("jumpSelect").value),target=SETS[x.year].find(z=>z.q===n);
  if(!target)return;
  const idx=session.findIndex(z=>z.id===target.id);
- if(idx>=0){pos=idx;render();return}
+ if(idx>=0){pos=idx;if(sessionMode==="mock"&&!mockFinished)saveMockDraft();render();return}
  if(sessionMode==="mock"&&!mockFinished){toast("模試中は別の演習へ移動できません");return}
  session=[target];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render();
 }
@@ -495,6 +603,7 @@ async function importProgress(event){
   const incoming=validateProgressBackup(JSON.parse(content));
   if(!confirm("現在の学習履歴を保存データで上書きします。続けますか？\n未保存なら先に「進捗を保存」を押してください。"))return;
   state=incoming;
+  clearMockDraft();
   session=[];sessionAnswers=Object.create(null);mockFinished=false;sessionMode="";pos=0;answeredCurrent=false;
   clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
   document.getElementById("timer").textContent="";
@@ -510,6 +619,7 @@ async function importProgress(event){
 function resetProgress(){
  if(!confirm("学習履歴を全部リセットしますか？\n削除前に進捗データを保存することをおすすめします。"))return;
  state={items:{},createdAt:new Date().toISOString()};
+ clearMockDraft();
  session=[];sessionAnswers=Object.create(null);mockFinished=false;sessionMode="";pos=0;answeredCurrent=false;
  clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
  document.getElementById("timer").textContent="";
@@ -519,7 +629,7 @@ function resetProgress(){
  save();toast("学習履歴をリセットしました");
 }
 (async function init(){
- rebuildCategory();updateDashboard();save();
+ rebuildCategory();updateDashboard();save();updateResumeNotice();
 })();
 </script>
 </body>
