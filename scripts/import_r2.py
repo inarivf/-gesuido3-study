@@ -68,7 +68,8 @@ for i,m in enumerate(qmatches):
     for j,c in enumerate(choices):
         cend=choices[j+1].start() if j<3 else len(block)
         opts.append(re.sub(r"\s+"," ",block[c.end():cend]).strip())
-    if len(stem)<15 or any(len(o)<3 for o in opts):
+    # Numeric choices like "6日" are legitimate and can be only two characters.
+    if len(stem)<15 or any(len(o)<2 for o in opts):
         raise RuntimeError(f"Q{i+1} suspicious text: stem {len(stem)}, options {[len(x) for x in opts]}")
     sections.append((stem,opts))
 a_start=qmatches[-1].end()+answer_section.end()
