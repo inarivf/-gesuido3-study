@@ -22,6 +22,7 @@ on:
       - 'scripts/test_trainer_ui.js'
       - 'research/explanation_review_v001.json'
       - 'research/r3_explanation_review_v001.json'
+      - 'research/r2_unverified_explanations_v001.json'
       - 'scripts/validate_explanation_reviews.py'
       - 'scripts/audit_question_integrity.py'
 
@@ -54,7 +55,7 @@ jobs:
       - name: Audit 240 archived question structures and source warnings
         run: python3 scripts/audit_question_integrity.py
 
-      - name: Build v1.16
+      - name: Build v1.17
         run: python3 scripts/build_site.py
 
       - name: Validate 240 questions and one-question views
@@ -86,6 +87,6 @@ jobs:
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.16 checked sludge formulas and preserved source caveats"
+          git commit -m "Build 下3 trainer v1.17 bulk R2 learning explanations with evidence boundaries"
           git pull --rebase origin main
           git push
