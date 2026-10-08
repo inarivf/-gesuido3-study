@@ -297,6 +297,10 @@ function render(){
   document.getElementById("sourceLink").textContent=is2?"R2実問題の保存元を開く":"R3実問題の保存元を開く";
   document.getElementById("viewerNote").textContent="問"+x.q+"を表示中。本文・選択肢は保存資料から収録。";
  }
+ if(x.sourceWarning){
+  const note=document.getElementById("sourceNotice");
+  note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 元資料の転記に注意：</b> '+escapeHtml(x.sourceWarning)+'</div>';
+ }
  document.getElementById("reveal").classList.remove("show");
  document.querySelectorAll(".choice").forEach(b=>{b.className="choice";b.disabled=false});
  document.getElementById("prevBtn").disabled=pos===0;
