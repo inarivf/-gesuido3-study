@@ -41,7 +41,7 @@ if not errors:
     else:
         ir=json.loads(integrity_path.read_text(encoding="utf-8"))
         if ir.get("total_archived_questions")!=240 or ir.get("current_grading_pool")!=234:fail("integrity report invalid")
-        if len(ir.get("arithmetic_checks",[]))!=6:fail("arithmetic audit count invalid")
+        if len(ir.get("arithmetic_checks",[]))!=7:fail("arithmetic audit count invalid")
     r7=json.loads((ROOT/"r7_meta.json").read_text(encoding="utf-8"))["questions"]
     r6=json.loads((ROOT/"r6_meta.json").read_text(encoding="utf-8"))["questions"]
     r3=json.loads((ROOT/"r3_meta.json").read_text(encoding="utf-8"))["questions"]
@@ -129,13 +129,13 @@ if not errors:
             fail(f"R2 Q{n} missing original-source warning")
     # The explanation overlay must change rationale only, never original questions or answers.
     reviews=json.loads((ROOT/"research/explanation_review_v001.json").read_text(encoding="utf-8"))
-    assert len(reviews["reviewed"])==23 and len(reviews["holds"])==6
+    assert len(reviews["reviewed"])==24 and len(reviews["holds"])==6
     r3_reviews=json.loads((ROOT/"research/r3_explanation_review_v001.json").read_text(encoding="utf-8"))
-    assert len(r3_reviews["reviewed"])==4
+    assert len(r3_reviews["reviewed"])==8
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
         "studyRecommendation","explanationAuditNote","explanationReferences","reviewedCount","holdCount",
-        "v1.15","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
+        "v1.16","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
@@ -193,4 +193,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.15, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
+print("VALIDATION PASS: v1.16, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
