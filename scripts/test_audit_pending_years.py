@@ -1,4 +1,5 @@
 import json
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -34,14 +35,21 @@ class PendingYearAuditTests(unittest.TestCase):
         qset=[]
         for i,n in enumerate(self.refs["years"]["R5"]["answers"],1):
             qset.append({"q":i,"stem":"保存原本から取得したというテスト用の仮データ・公開不可。","choices":["選択肢1","選択肢2","選択肢3","選択肢4"],"answer":n})
-        source={"type":"verifiable_exam_archive","uri":"example.test/archived","sha256":"f"*64}
-        c={"year":"R5","sourceEvidence":source,"questions":qset}
-        with self.assertRaises(AssertionError): validate_candidate(c,self.refs)
-        qset[15].update({"status":"VOID","score_value":1})
-        result=validate_candidate(c,self.refs)
-        self.assertEqual(result["result"],"CANDIDATE_STRUCTURAL_PASS_NOT_RELEASE_APPROVAL")
-        c["releaseApproved"]=True
-        with self.assertRaises(AssertionError):validate_candidate(c,self.refs)
+        with tempfile.TemporaryDirectory() as tmp:
+            p=Path(tmp)/"test_exam.pdf"
+            p.write_bytes(b"%PDF-1.4\\nSynthetic file for structural test only")
+            original_hash=hashlib.sha256(p.read_bytes()).hexdigest()
+            source={"type":"verifiable_exam_archive","uri":"https://example.test/archived","local_file":"test_exam.pdf","sha256":original_hash}
+            c={"year":"R5","sourceEvidence":source,"questions":qset}
+            with self.assertRaises(AssertionError):validate_candidate(c,self.refs,evidence_root=tmp)
+            qset[15].update({"status":"VOID","score_value":1})
+            result=validate_candidate(c,self.refs,evidence_root=tmp)
+            self.assertEqual(result["result"],"CANDIDATE_STRUCTURAL_PASS_NOT_RELEASE_APPROVAL")
+            c["releaseApproved"]=True
+            with self.assertRaises(AssertionError):validate_candidate(c,self.refs,evidence_root=tmp)
+            c.pop("releaseApproved")
+            source["sha256"]="f"*64
+            with self.assertRaises(AssertionError):validate_candidate(c,self.refs,evidence_root=tmp)
 
 if __name__=="__main__":
     unittest.main(verbosity=2)
