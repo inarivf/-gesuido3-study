@@ -23,10 +23,12 @@ if len(pages)!=29:
 
 starts={}
 page_meta={}
+page_lines={}
 for page_no,page in enumerate(pages,1):
     pw=float(page.get("width"))
     ph=float(page.get("height"))
     page_meta[page_no]={"width":pw,"height":ph}
+    page_lines[page_no]=[]
     for line in page.find_all("line"):
         words=line.find_all("word")
         if not words:
@@ -34,14 +36,15 @@ for page_no,page in enumerate(pages,1):
         txt="".join(w.get_text("",strip=True) for w in words)
         norm=unicodedata.normalize("NFKC",txt)
         norm=re.sub(r"\s+","",norm)
+        x=min(float(w.get("xmin")) for w in words)
+        y=min(float(w.get("ymin")) for w in words)
+        page_lines[page_no].append((y,norm))
         m=re.match(r"^問([0-9]{1,2})(?:\D|$)",norm)
         if not m:
             continue
         q=int(m.group(1))
         if not (1<=q<=60):
             continue
-        x=min(float(w.get("xmin")) for w in words)
-        y=min(float(w.get("ymin")) for w in words)
         # Question headers are near the left margin. Ignore accidental body mentions.
         if x>180:
             continue
@@ -66,6 +69,8 @@ for p in R7_OUT.glob("q-*.jpg"):
     p.unlink()
 
 crop_map={}
+choice_marker_ok=[]
+page_break_ok=[]
 for q in range(1,61):
     info=starts[q]
     page_no=info["page"]
@@ -78,6 +83,27 @@ for q in range(1,61):
     bottom_pt=(next_y-7.0) if next_y is not None else (ph-24.0)
     if bottom_pt-top_pt<70:
         raise RuntimeError(f"R7 crop too short Q{q}: {bottom_pt-top_pt:.1f}pt")
+
+    # Text-level completeness check: every cropped question must contain choices (1)-(4).
+    segment="\n".join(
+        text for y,text in page_lines[page_no]
+        if y>=info["y"]-1.0 and y<bottom_pt
+    )
+    missing_choices=[n for n in range(1,5) if re.search(rf"^\({n}\)",segment,re.M) is None]
+    if missing_choices:
+        raise RuntimeError(f"R7 crop text missing choice markers Q{q}: {missing_choices}")
+    choice_marker_ok.append(q)
+
+    # If the next question starts on a new page, it must begin near that page's top.
+    # This guards against silently cutting off a question that continued onto the next page.
+    if q<60 and starts[q+1]["page"]>page_no:
+        next_info=starts[q+1]
+        if next_info["page"]!=page_no+1 or next_info["y"]>140:
+            raise RuntimeError(
+                f"R7 page-break continuity suspicious Q{q}->Q{q+1}: "
+                f"page {page_no}->{next_info['page']} y={next_info['y']:.1f}"
+            )
+        page_break_ok.append(q)
 
     page_img=R7_PAGES/f"page-{page_no:03d}.jpg"
     if not page_img.exists():
@@ -169,7 +195,10 @@ audit={
     "r7_crops":len(list(R7_OUT.glob("q-*.jpg"))),
     "r6_question_pages":len(list(R6_OUT.glob("q-*.html"))),
     "r7_page_distribution":{str(p):sum(1 for q in starts if starts[q]["page"]==p) for p in sorted({starts[q]["page"] for q in starts})},
-    "r7_last_questions":{str(q):starts[q] for q in range(55,61)}
+    "r7_last_questions":{str(q):starts[q] for q in range(55,61)},
+    "r7_choice_marker_checks":len(choice_marker_ok),
+    "r7_page_break_checks":len(page_break_ok),
+    "r7_choice_marker_failures":[]
 }
 (ROOT/"question_view_audit.json").write_text(json.dumps(audit,ensure_ascii=False,indent=2),encoding="utf-8")
 bbox.unlink(missing_ok=True)
