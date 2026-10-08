@@ -568,7 +568,7 @@ info("legacy and modern R2 exam records are preserved and clearly distinguished"
 // per-question provenance and display links only after the learner answers.
 const legal=bootFresh();
 legal.run('session=[QUESTION_BY_ID.get("R2-05")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
-assert(!legal.el("explain").textContent.includes("2025年"));
+assert(!String(legal.el("explain").textContent||"").includes("2025年"));
 assert(legal.el("explanationReferences").classList.contains("hidden"));
 legal.run("answer(3)");
 assert(legal.el("explain").textContent.includes("2025年"));
