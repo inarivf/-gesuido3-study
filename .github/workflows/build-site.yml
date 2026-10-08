@@ -22,6 +22,7 @@ on:
       - 'scripts/test_trainer_ui.js'
       - 'research/explanation_review_v001.json'
       - 'scripts/validate_explanation_reviews.py'
+      - 'scripts/audit_question_integrity.py'
 
 permissions:
   contents: write
@@ -49,7 +50,10 @@ jobs:
       - name: Audit verified explanations
         run: python3 scripts/validate_explanation_reviews.py
 
-      - name: Build v1.13
+      - name: Audit 240 archived question structures and source warnings
+        run: python3 scripts/audit_question_integrity.py
+
+      - name: Build v1.14
         run: python3 scripts/build_site.py
 
       - name: Validate 240 questions and one-question views
@@ -76,11 +80,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html site_manifest.json r7_questions r6_questions r7_question_map.json question_view_audit.json
+          git add index.html site_manifest.json r7_questions r6_questions r7_question_map.json question_view_audit.json research/question_integrity_audit_v001.json
           if git diff --cached --quiet; then
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.13 accurate progress after source holds"
+          git commit -m "Build 下3 trainer v1.14 accurate progress after source holds"
           git pull --rebase origin main
           git push
