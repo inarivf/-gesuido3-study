@@ -78,11 +78,15 @@ rows=[]
 for line in tail.splitlines():
     match=re.fullmatch(r"\s*([0-9]{1,2})\s+([1-4])\s+[0-9]{1,3}\s*",line)
     if match: rows.append((int(match.group(1)),int(match.group(2))))
-if [q for q,a in rows]!=list(range(1,61)):
-    raise RuntimeError(f"Source internal answer list not 1..60: {len(rows)} rows; tail sample {tail[:500]}")
+# This archived blog has an answer appendix only for Q1..30. Q31..60 is
+# independently sourced from gesuidou.link/gesan46/, not inferred.
+if [q for q,a in rows]!=list(range(1,31)):
+    raise RuntimeError(f"Source internal answer list not 1..30: {len(rows)} rows; tail sample {tail[:500]}")
 found=[answer for _,answer in rows]
-if found!=KEY:
-    raise RuntimeError("Blog's internal answer key disagrees with the independent gesuidou.link/gesan46/ key, mismatch Qs "+str([i+1 for i,(a,b) in enumerate(zip(found,KEY)) if a!=b]))
+if found!=KEY[:30]:
+    raise RuntimeError("Blog's Q1..30 answer key disagrees with the independent gesuidou.link/gesan46/ key, mismatch Qs "+str([i+1 for i,(a,b) in enumerate(zip(found,KEY)) if a!=b]))
+# Remaining 30 answers are accepted only from the separately checked source
+# listed above; preserve this limitation in the source audit.
 
 # Categorization follows the 2020/46 official field distribution from a published exam-book sample.
 def category(q):
@@ -113,7 +117,7 @@ doc={
 (ROOT/"r2_meta.json").write_text(json.dumps(doc,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 audit={
  "result":"PASS","selector":selector,"source_bytes":len(raw),
- "question_count":60,"choice_count":240,"internal_key_rows":60,"key_mismatches":0,
+ "question_count":60,"choice_count":240,"internal_key_rows":30,"independent_key_rows":60,"key_mismatches":0,
  "text_length":len(text),"source_sha256":doc["source_sha256"],
  "stem_lengths":[len(x[0]) for x in sections],
  "choice_min_length":min(len(o) for _,opts in sections for o in opts),
