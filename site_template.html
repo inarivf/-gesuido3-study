@@ -258,11 +258,94 @@ function isWeak(x){
  const s=state.items[x.id];
  return !!s&&(s.rating==="ng"||s.rating==="maybe"||(s.rating!=="ok"&&s.lastCorrect===false));
 }
+function priorityScore(x){
+ const s=state.items[x.id];
+ if(!s||!s.attempts)return 20;
+ let score=0;
+ if(s.rating==="ng")score+=110;
+ else if(s.rating==="maybe")score+=90;
+ else if(s.rating==="ok")score-=35;
+ if(s.lastCorrect===false)score+=65;
+ const attempts=s.attempts||0,wrong=s.wrong||0;
+ score+=Math.min(40,wrong*9);
+ score+=Math.round(25*wrong/Math.max(1,attempts));
+ return score;
+}
+function prioritizedQuestions(pool,limit){
+ return shuffle(pool).sort((a,b)=>priorityScore(b)-priorityScore(a)).slice(0,limit);
+}
+function getPendingMock(){
+ try{
+  const value=localStorage.getItem(MOCK_KEY);
+  if(!value)return null;
+  const d=JSON.parse(value);
+  if(!d||d.version!==1||!["R7","R6","R3","R2"].includes(d.year)
+      ||!Number.isFinite(d.deadline)||!Number.isFinite(d.startedAt)
+      ||!Number.isInteger(d.pos)||d.pos<0||d.pos>=60
+      ||typeof d.runKey!=="string"||d.runKey.length<5||d.runKey.length>120
+      ||!d.answers||typeof d.answers!=="object"||Array.isArray(d.answers))return null;
+  if(state.lastGradedMockKey===d.runKey)return null;
+  const permitted=new Set(SETS[d.year].map(x=>x.id));
+  const entries=Object.entries(d.answers);
+  if(entries.length>60||entries.some(([id,rec])=>
+    !permitted.has(id)||!rec||!Number.isInteger(rec.choice)||rec.choice<1||rec.choice>4
+  ))return null;
+  return d;
+ }catch(e){return null}
+}
+function updateResumeNotice(){
+ const d=getPendingMock();
+ const box=document.getElementById("resumeMockBox");
+ box.classList.toggle("hidden",!d);
+ if(!d)return;
+ const answered=Object.keys(d.answers).length;
+ const expired=Date.now()>=d.deadline;
+ document.getElementById("resumeMockInfo").textContent=
+  d.year+" 第"+({"R7":51,"R6":50,"R3":47,"R2":46}[d.year])+"回　"
+  +answered+"/60問 回答済み　"+(expired?"制限時間終了（再開すると採点）":"残り約"+Math.ceil((d.deadline-Date.now())/60000)+"分");
+}
+function clearMockDraft(){
+ try{localStorage.removeItem(MOCK_KEY)}catch(e){}
+ updateResumeNotice();
+}
+function saveMockDraft(){
+ if(sessionMode!=="mock"||mockFinished)return;
+ try{
+  localStorage.setItem(MOCK_KEY,JSON.stringify({
+   version:1,year:session[0].year,startedAt:timerEndsAt-MOCK_DURATION_MS,
+   deadline:timerEndsAt,pos,runKey:mockRunKey,answers:sessionAnswers
+  }));
+  updateResumeNotice();
+  document.getElementById("resumeMockBox").classList.add("hidden");
+ }catch(e){toast("端末の保存領域に書き込めません。模試の途中保存ができません")}
+}
+function resumeMock(){
+ const d=getPendingMock();
+ if(!d){toast("再開できる模試がありません");updateResumeNotice();return}
+ const y=document.getElementById("yearFilter");
+ y.value=d.year;rebuildCategory();
+ session=[...SETS[d.year]].sort((a,b)=>a.q-b.q);
+ sessionMode="mock";sessionAnswers=Object.assign(Object.create(null),d.answers);
+ pos=d.pos;mockRunKey=d.runKey;mockFinished=false;answeredCurrent=false;
+ document.getElementById("mockResult").classList.add("hidden");
+ document.getElementById("finishMockBtn").classList.remove("hidden");
+ document.getElementById("quizCard").classList.remove("hidden");
+ document.getElementById("sessionBox").classList.remove("hidden");
+ document.getElementById("resumeMockBox").classList.add("hidden");
+ render();
+ startTimer(true,d.deadline);
+}
+function discardSavedMock(){
+ if(!confirm("途中の模試データを破棄しますか？回答は採点されません。"))return;
+ clearMockDraft();toast("途中の模試を破棄しました");
+}
+
 function startMode(mode){
  let pool=poolFromFilters();
  if(!pool.length){toast("条件に合う問題がありません");return}
  let nextSession;
  if(mode==="random20")nextSession=shuffle(pool).slice(0,20);
+ else if(mode==="priority10")nextSession=prioritizedQuestions(pool,10);
  else if(mode==="weak"){
   nextSession=pool.filter(isWeak);
   if(!nextSession.length){toast("この条件の弱点問題はまだありません");return}
@@ -271,25 +354,29 @@ function startMode(mode){
   if(y==="ALL"){toast("模試はR7・R6・R3・R2のどれか1年度を選んでください");return}
   nextSession=[...SETS[y]].sort((a,b)=>a.q-b.q);
  }else nextSession=[...pool].sort((a,b)=>b.year.localeCompare(a.year)||a.q-b.q);
- if(sessionMode==="mock"&&!mockFinished&&Object.keys(sessionAnswers).length>0
-    &&!confirm("採点前の模試回答は破棄されます。別の学習を開始しますか？"))return;
+ const saved=getPendingMock();
+ if((saved||sessionMode==="mock"&&!mockFinished)
+    &&!confirm("途中の模試は破棄されます。別の学習を開始しますか？"))return;
+ if(saved)clearMockDraft();
  session=nextSession;
  sessionMode=mode;
  pos=0;answeredCurrent=false;
  sessionAnswers=Object.create(null);
  mockFinished=false;
+ mockRunKey=mode==="mock"?String(Date.now())+"-"+nextSession[0].year+"-"+Math.random().toString(36).slice(2):"";
  document.getElementById("mockResult").classList.add("hidden");
  document.getElementById("mockResult").textContent="";
  document.getElementById("finishMockBtn").classList.toggle("hidden",mode!=="mock");
  startTimer(mode==="mock");
+ if(mode==="mock")saveMockDraft();
  document.getElementById("quizCard").classList.remove("hidden");
  document.getElementById("sessionBox").classList.remove("hidden");
  render();
 }
-function startTimer(on){
+function startTimer(on,existingDeadline=null){
  clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
  if(!on){document.getElementById("timer").textContent="";return}
- timerEndsAt=Date.now()+195*60*1000;
+ timerEndsAt=existingDeadline===null?Date.now()+MOCK_DURATION_MS:existingDeadline;
  const tick=()=>{
   const left=Math.max(0,timerEndsAt-Date.now());
   const sec=Math.floor(left/1000),h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
@@ -304,7 +391,7 @@ function render(){
  answeredCurrent=!!sessionAnswers[x.id]&&(sessionMode!=="mock"||mockFinished);
  document.getElementById("qLabel").textContent=x.yearLabel+"　問"+x.q;
  document.getElementById("qMeta").textContent=x.category+" ｜ "+x.title;
- document.getElementById("sessionLabel").textContent=sessionMode==="mock"?"模試":sessionMode==="random20"?"ランダム20問":sessionMode==="weak"?"弱点復習":"演習";
+ document.getElementById("sessionLabel").textContent=sessionMode==="mock"?"模試":sessionMode==="random20"?"ランダム20問":sessionMode==="priority10"?"重点10問":sessionMode==="weak"?"弱点復習":"演習";
  document.getElementById("sessionCount").textContent=(pos+1)+" / "+session.length+(sessionMode==="mock"?"　回答済み："+Object.keys(sessionAnswers).length+"/"+session.length:"");
  document.getElementById("sessionProgress").style.width=((pos+1)/session.length*100)+"%";
  const jump=document.getElementById("jumpSelect");jump.innerHTML="";
@@ -376,6 +463,7 @@ function answer(a){
   sessionAnswers[x.id]={choice:a};
   document.querySelectorAll(".choice").forEach(b=>b.classList.toggle("selected",Number(b.dataset.a)===a));
   document.getElementById("sessionCount").textContent=(pos+1)+" / "+session.length+"　回答済み："+Object.keys(sessionAnswers).length+"/"+session.length;
+  saveMockDraft();
   return;
  }
  answeredCurrent=true;
@@ -391,6 +479,9 @@ function finishMock(reason){
  if(reason==="manual"&&!confirm("模試を終了して採点しますか？未回答の問題は0点になります。"))return;
  mockFinished=true;
  clearInterval(timerHandle);timerHandle=null;
+ if(state.lastGradedMockKey===mockRunKey&&mockRunKey){
+  clearMockDraft();return;
+ }
  document.getElementById("finishMockBtn").classList.add("hidden");
  let correct=0,wrong=0;
  for(const x of session){
@@ -402,10 +493,12 @@ function finishMock(reason){
   if(ok){correct++;s.correct++}else{wrong++;s.wrong++;s.rating="ng"}
  }
  const blank=session.length-correct-wrong;
+ state.lastGradedMockKey=mockRunKey;
  const result=document.getElementById("mockResult");
  result.textContent="模試結果："+correct+" / "+session.length+"点　誤答："+wrong+"問　未回答："+blank+"問"+(reason==="time"?"（制限時間終了）":"");
  result.classList.remove("hidden");
  save();
+ clearMockDraft();
  render();
 }
 function rate(r){
@@ -413,13 +506,13 @@ function rate(r){
  const x=q(),s=itemState(x.id);s.rating=r;save();
  toast(r==="ok"?"覚えたにしました":r==="maybe"?"怪しいにしました":"弱点にしました");
 }
-function move(d){const n=pos+d;if(n<0||n>=session.length)return;pos=n;render()}
+function move(d){const n=pos+d;if(n<0||n>=session.length)return;pos=n;if(sessionMode==="mock"&&!mockFinished)saveMockDraft();render()}
 function jumpQuestion(){
  if(!session.length)return;
  const x=q(),n=Number(document.getElementById("jumpSelect").value),target=SETS[x.year].find(z=>z.q===n);
  if(!target)return;
  const idx=session.findIndex(z=>z.id===target.id);
- if(idx>=0){pos=idx;render();return}
+ if(idx>=0){pos=idx;if(sessionMode==="mock"&&!mockFinished)saveMockDraft();render();return}
  if(sessionMode==="mock"&&!mockFinished){toast("模試中は別の演習へ移動できません");return}
  session=[target];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render();
 }
@@ -508,6 +601,7 @@ async function importProgress(event){
   const incoming=validateProgressBackup(JSON.parse(content));
   if(!confirm("現在の学習履歴を保存データで上書きします。続けますか？\n未保存なら先に「進捗を保存」を押してください。"))return;
   state=incoming;
+  clearMockDraft();
   session=[];sessionAnswers=Object.create(null);mockFinished=false;sessionMode="";pos=0;answeredCurrent=false;
   clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
   document.getElementById("timer").textContent="";
@@ -523,6 +617,7 @@ async function importProgress(event){
 function resetProgress(){
  if(!confirm("学習履歴を全部リセットしますか？\n削除前に進捗データを保存することをおすすめします。"))return;
  state={items:{},createdAt:new Date().toISOString()};
+ clearMockDraft();
  session=[];sessionAnswers=Object.create(null);mockFinished=false;sessionMode="";pos=0;answeredCurrent=false;
  clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
  document.getElementById("timer").textContent="";
@@ -532,7 +627,7 @@ function resetProgress(){
  save();toast("学習履歴をリセットしました");
 }
 (async function init(){
- rebuildCategory();updateDashboard();save();
+ rebuildCategory();updateDashboard();save();updateResumeNotice();
 })();
 </script>
 </body>
