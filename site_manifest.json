@@ -1,11 +1,12 @@
 {
-  "version": "1.8",
+  "version": "1.9",
   "generated_from": [
     "site_template.html",
     "r7_meta.json",
     "r6_meta.json",
     "r3_meta.json",
     "r2_meta.json",
+    "research/explanation_review_v001.json",
     "r7_question_map.json",
     "r6_questions/"
   ],
