@@ -461,9 +461,9 @@ info("diagram-dependent R2 Q48 flagged without modifying correct answer");
 
 // v1.10: quality counts and additional checked explanations
 const checks=bootFresh();
-assert.equal(Number(checks.el("reviewedCount").textContent),20);
+assert.equal(Number(checks.el("reviewedCount").textContent),27);
 assert.equal(Number(checks.el("holdCount").textContent),6);
-info("quality dashboard reports 18 independently grounded explanations and six holds");
+info("quality dashboard reports 27 independently grounded explanations and six holds");
 
 checks.run('session=[QUESTION_BY_ID.get("R2-09")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
 checks.run("answer(3)");
@@ -564,6 +564,38 @@ assert(!historyMarkup.includes("前回比："));
 assert.equal(historical.run("state.mockHistory.length"),2);
 info("legacy and modern R2 exam records are preserved and clearly distinguished");
 
-console.log("UI REGRESSION PASS: 38 scenarios");
+// v1.15: statutory explanations for two archived exam years use
+// per-question provenance and display links only after the learner answers.
+const legal=bootFresh();
+legal.run('session=[QUESTION_BY_ID.get("R2-05")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+assert(!legal.el("explain").textContent.includes("2025年"));
+assert(legal.el("explanationReferences").classList.contains("hidden"));
+legal.run("answer(3)");
+assert(legal.el("explain").textContent.includes("2025年"));
+assert(legal.el("explain").textContent.includes("9時間以内"));
+assert(legal.el("explanationReferences").innerHTML.includes("20190920"));
+info("R2 Q5 explicitly distinguishes 2020 examination law from 2025 E. coli revision");
+
+legal.run('session=[QUESTION_BY_ID.get("R2-04")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+legal.run("answer(3)");
+assert(legal.el("explain").textContent.includes("合流式"));
+assert(legal.el("explanationReferences").innerHTML.includes("20190401"));
+info("R2 Q4 checked against historical combined-sewer discharge standard");
+
+legal.run('session=[QUESTION_BY_ID.get("R3-01")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+assert(legal.el("explanationReferences").classList.contains("hidden"));
+legal.run("answer(3)");
+assert(legal.el("explain").textContent.includes("第32条"));
+assert(legal.el("explanationReferences").innerHTML.includes("laws.e-gov.go.jp"));
+assert(legal.el("explanationAuditNote").textContent.includes("内容確認済み"));
+info("R3 Q1 review overlay displays independent land-entry statute only after answer");
+
+legal.run('session=[QUESTION_BY_ID.get("R3-08")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+legal.run("answer(4)");
+assert(legal.el("explain").textContent.includes("国及び地方公共団体"));
+assert(legal.el("explanationReferences").innerHTML.includes("345AC0000000137"));
+info("R3 Q8 independently checked waste-law responsibility clause");
+
+console.log("UI REGRESSION PASS: 42 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
