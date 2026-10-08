@@ -1,10 +1,25 @@
-import json,re,sys
+import json,re,sys,unicodedata
 from pathlib import Path
+from bs4 import BeautifulSoup
 
 ROOT=Path(__file__).resolve().parents[1]
 errors=[]
 
+R7_OFFICIAL_KEY=[
+    4,4,3,1,2,1,3,2,4,2,1,3,3,2,1,2,4,1,2,3,
+    3,1,4,2,2,1,3,4,1,1,4,3,3,1,2,2,4,4,2,3,
+    2,4,1,1,3,4,1,2,4,3,4,4,4,1,3,2,2,1,3,3
+]
+R6_EXECUTOR_KEY=[
+    2,4,3,1,2,3,4,1,1,2,1,3,2,1,2,4,1,3,2,4,
+    4,4,1,3,3,3,1,2,1,3,4,4,1,1,2,4,2,3,4,2,
+    3,1,2,1,4,3,3,4,2,4,3,2,4,2,4,1,3,2,3,1
+]
+
 def fail(msg): errors.append(msg)
+
+def norm_text(value):
+    return unicodedata.normalize("NFKC",value or "").replace("\u3000"," ")
 
 for file in ["index.html","site_template.html","r7_meta.json","r6_meta.json","r6_build_audit.json","r7_mondai_3syu_official.pdf","r6_archive.html","r7_question_map.json","question_view_audit.json"]:
     if not (ROOT/file).exists():
@@ -22,6 +37,28 @@ if not errors:
     bad=[q["id"] for q in allq if q.get("answer") not in [1,2,3,4]]
     if bad: fail("invalid answers: "+",".join(bad))
 
+    # Canonical identity + answer-key audit.
+    for label,qs,key,round_label in [
+        ("R7",r7,R7_OFFICIAL_KEY,"令和7年度・第51回"),
+        ("R6",r6,R6_EXECUTOR_KEY,"令和6年度・第50回"),
+    ]:
+        by_q={int(q.get("q",0)):q for q in qs}
+        if sorted(by_q)!=list(range(1,61)):
+            fail(f"{label} question numbers are not exactly 1..60")
+        for n in range(1,61):
+            q=by_q.get(n)
+            if q is None:
+                continue
+            expected_id=f"{label}-{n:02d}"
+            if q.get("id")!=expected_id:
+                fail(f"{label} Q{n} id {q.get('id')} != {expected_id}")
+            if q.get("year")!=label:
+                fail(f"{label} Q{n} year {q.get('year')} != {label}")
+            if q.get("yearLabel")!=round_label:
+                fail(f"{label} Q{n} yearLabel {q.get('yearLabel')} != {round_label}")
+            if int(q.get("answer",0))!=key[n-1]:
+                fail(f"{label} Q{n} answer {q.get('answer')} != canonical {key[n-1]}")
+
     qmap=json.loads((ROOT/"r7_question_map.json").read_text(encoding="utf-8")).get("questions",{})
     if len(qmap)!=60: fail(f"R7 question crop map count {len(qmap)}")
     for n in range(1,61):
@@ -32,6 +69,8 @@ if not errors:
     if qview.get("r7_detected_questions")!=60: fail(f"R7 bbox detected {qview.get('r7_detected_questions')}")
     if qview.get("r7_crops")!=60: fail(f"R7 crop count {qview.get('r7_crops')}")
     if qview.get("r6_question_pages")!=60: fail(f"R6 question page count {qview.get('r6_question_pages')}")
+    if qview.get("r7_choice_marker_checks")!=60: fail(f"R7 choice marker checks {qview.get('r7_choice_marker_checks')}")
+    if qview.get("r7_choice_marker_failures"): fail(f"R7 choice marker failures {qview.get('r7_choice_marker_failures')}")
 
     audit=json.loads((ROOT/"r6_build_audit.json").read_text(encoding="utf-8"))
     if audit.get("questions")!=60: fail(f"R6 archive questions {audit.get('questions')}")
@@ -56,12 +95,28 @@ if not errors:
     if len(re.findall(r'"id":"R6-',html))!=60: fail("embedded R6 count not 60")
 
     archive=(ROOT/"r6_archive.html").read_text(encoding="utf-8")
+    archive_soup=BeautifulSoup(archive,"html.parser")
     for n in range(1,61):
         if f'id="r6q{n}"' not in archive and f"id='r6q{n}'" not in archive:
             fail(f"R6 archive missing anchor r6q{n}")
+
+        # The generated one-question view must still contain the correct question header
+        # and all four answer choices. Q6 uses a table, so support both (1)-(4) markers
+        # and exact table-cell numerals 1..4.
+        qfile=ROOT/f"r6_questions/q-{n:03d}.html"
+        if qfile.exists():
+            qsoup=BeautifulSoup(qfile.read_text(encoding="utf-8"),"html.parser")
+            plain=norm_text(qsoup.get_text(" ",strip=True))
+            if re.search(rf"問\s*0*{n}(?:\D|$)",plain) is None:
+                fail(f"R6 generated view Q{n} missing its question header")
+            paren_ok=all(f"({k})" in plain for k in range(1,5))
+            cell_values={norm_text(td.get_text(" ",strip=True)).strip() for td in qsoup.find_all("td")}
+            table_ok=all(str(k) in cell_values for k in range(1,5))
+            if not (paren_ok or table_ok):
+                fail(f"R6 generated view Q{n} missing one or more answer choices")
 
 if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.1, 120 questions, one-question views 60/60 + 60/60, no answer mismatch")
+print("VALIDATION PASS: v1.1, 120 questions, identity/answer keys checked, question choices checked, one-question views 60/60 + 60/60")
