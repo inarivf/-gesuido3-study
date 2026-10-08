@@ -262,6 +262,7 @@ function priorityScore(x){
  const s=state.items[x.id];
  if(!s||!s.attempts)return 20;
  let score=0;
+ if(s.rating==="ok")return -100;
  if(s.rating==="ng")score+=110;
  else if(s.rating==="maybe")score+=90;
  else if(s.rating==="ok")score-=35;
@@ -383,7 +384,7 @@ function startTimer(on,existingDeadline=null){
   document.getElementById("timer").textContent=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
   if(left<=0){clearInterval(timerHandle);if(sessionMode==="mock"&&!mockFinished)finishMock("time")}
  };
- tick();timerHandle=setInterval(tick,1000);
+ tick();if(sessionMode==="mock"&&!mockFinished)timerHandle=setInterval(tick,1000);
 }
 function render(){
  if(!session.length)return;
