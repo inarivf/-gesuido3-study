@@ -638,7 +638,7 @@ function getStudyRecommendation(){
   if(v){g.attempts+=(v.attempts||0);g.wrong+=(v.wrong||0);}
  }
  const categories=[...groups.values()];
- const haveHistory=categories.some(g=>g.attempts>0);
+ const haveHistory=categories.some(g=>g.attempts>0||g.weak>0);
  if(!haveHistory){
   categories.sort((a,b)=>b.unseen-a.unseen||a.category.localeCompare(b.category,"ja"));
   return {...categories[0],reason:"まだ学習履歴がないので、未回答問題の多い分野から始めましょう。",kind:"unseen"};
