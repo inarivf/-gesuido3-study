@@ -122,4 +122,4 @@ report={
 }
 out=ROOT/"research/question_integrity_audit_v001.json"
 out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-print("QUESTION_INTEGRITY_PASS: 240 source rows, 6 holds, 2 repaired-wording warnings, 6 arithmetic checks, 24 reviewed R2 explanations, 8 R3 explanations")
+print("QUESTION_INTEGRITY_PASS: 240 source rows, 6 holds, 2 repaired-wording warnings, 7 arithmetic checks, 24 reviewed R2 explanations, 8 R3 explanations")
