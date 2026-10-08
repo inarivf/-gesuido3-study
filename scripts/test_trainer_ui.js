@@ -461,9 +461,9 @@ info("diagram-dependent R2 Q48 flagged without modifying correct answer");
 
 // v1.10: quality counts and additional checked explanations
 const checks=bootFresh();
-assert.equal(Number(checks.el("reviewedCount").textContent),27);
+assert.equal(Number(checks.el("reviewedCount").textContent),32);
 assert.equal(Number(checks.el("holdCount").textContent),6);
-info("quality dashboard reports 27 independently grounded explanations and six holds");
+info("quality dashboard reports 32 independently grounded explanations and six holds");
 
 checks.run('session=[QUESTION_BY_ID.get("R2-09")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
 checks.run("answer(3)");
@@ -605,6 +605,25 @@ assert(legal.el("explanationReferences").classList.contains("hidden"));
 assert(legal.el("reveal").classList.contains("show")===false);
 info("answer and source links are cleared on transition to an unattempted question");
 
-console.log("UI REGRESSION PASS: 43 scenarios");
+// v1.16: four R3 calculations and corrected archival R2 math case.
+const calcs=bootFresh();
+for(const [id,answer,expected,evidence] of [
+  ["R3-23",2,"20m³","12767988422"],
+  ["R3-24",2,"100kg/(m・時)","12767988422"],
+  ["R3-37",2,"200mL/g","hyogo.lg.jp"],
+  ["R3-38",2,"30m³/日","jswa.go.jp"],
+  ["R2-36",1,"30m³/日","jswa.go.jp"],
+]){
+  calcs.run('session=[QUESTION_BY_ID.get("'+id+'")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+  assert(calcs.el("explanationReferences").classList.contains("hidden"),id+" reference leaked before answering");
+  if(id==="R2-36")assert(calcs.el("sourceNotice").innerHTML.includes("転記に注意"),"R2-36 historical repair notice lost");
+  calcs.run("answer("+answer+")");
+  assert(calcs.el("explain").textContent.includes(expected),id+" calculation not rendered");
+  assert(calcs.el("explanationAuditNote").textContent.includes("再計算済み"),id+" calculation review status missing");
+  assert(calcs.el("explanationReferences").innerHTML.includes(evidence),id+" independent references not rendered");
+  assert(calcs.el("formula").classList.contains("hidden")===false,id+" formula missing");
+  info(id+" formula and cited calculation are shown only after answering");
+}
+console.log("UI REGRESSION PASS: 48 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
