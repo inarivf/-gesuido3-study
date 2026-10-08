@@ -6,6 +6,7 @@ is provided, validate its contents and metadata against these references before
 any separate decision to release it to the quiz.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -52,14 +53,24 @@ def evaluate_score(year,choices,references):
             score+=1
     return score
 
-def validate_candidate(candidate,refs):
+def validate_candidate(candidate,refs,evidence_root=ROOT):
     """Reject non-original/incomplete questions; do not auto-publish on PASS."""
     label=candidate.get("year")
     assert label in ("R4","R5"), "Only R4 or R5 accepted"
     src=candidate.get("sourceEvidence",{})
     assert src.get("type") in ("official_pdf","owner_supplied_exam_scan","verifiable_exam_archive"), "Original source evidence required"
-    assert src.get("uri"), "Missing original archive/document reference"
-    assert len(src.get("sha256",""))==64, "Missing SHA-256 of source bytes"
+    uri=src.get("uri","")
+    assert isinstance(uri,str) and (uri.startswith("https://") or uri.startswith("user-upload:")), "Missing verifiable original-source reference"
+    digest=src.get("sha256","")
+    assert isinstance(digest,str) and len(digest)==64 and all(x in "0123456789abcdef" for x in digest.lower()), "Invalid SHA-256"
+    local=src.get("local_file")
+    assert isinstance(local,str) and local.strip(), "A real local source file must be supplied, not only a claimed hash"
+    root=Path(evidence_root).resolve()
+    actual=(root/local).resolve()
+    assert actual.is_relative_to(root), "Source file outside evidence root"
+    assert actual.is_file() and actual.suffix.lower() in (".pdf",".html",".htm",".zip",".png",".jpg",".jpeg"), "Original PDF/archive/scan missing"
+    actual_digest=hashlib.sha256(actual.read_bytes()).hexdigest()
+    assert actual_digest==digest.lower(), "Source file digest mismatch"
     assert candidate.get("releaseApproved") is not True, "Candidate input may not self-approve publication"
     qs=candidate.get("questions",[])
     assert len(qs)==60, "Must have all 60 questions"
