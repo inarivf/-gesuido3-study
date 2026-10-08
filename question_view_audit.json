@@ -64,5 +64,8 @@
       "x": 76.560235,
       "y": 339.975929
     }
-  }
+  },
+  "r7_choice_marker_checks": 60,
+  "r7_page_break_checks": 27,
+  "r7_choice_marker_failures": []
 }
