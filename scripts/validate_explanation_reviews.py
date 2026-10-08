@@ -15,12 +15,12 @@ ledger=read("research/explanation_review_v001.json")
 source={q["id"]:q for q in r2}
 expected={"R2-01":2,"R2-02":2,"R2-03":2,"R2-07":1,
           "R2-08":1,"R2-09":3,"R2-11":3,"R2-13":2,
-          "R2-14":1,"R2-22":2,"R2-31":1,"R2-32":4,
+          "R2-14":1,"R2-17":4,"R2-22":2,"R2-23":2,"R2-31":1,"R2-32":4,
           "R2-33":2,"R2-51":2,"R2-52":4,"R2-53":1,
           "R2-57":3,"R2-60":1}
 holds={"R2-10","R2-15","R2-24","R2-30","R2-43","R2-48"}
 assert len(r2)==60
-assert ledger["version"]==2
+assert ledger["version"]==3
 assert {x["id"] for x in ledger["reviewed"]}==set(expected)
 assert {x["id"] for x in ledger["holds"]}==holds
 assert len(ledger["reviewed"])==len(expected)
