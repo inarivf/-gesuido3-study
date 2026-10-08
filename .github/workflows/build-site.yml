@@ -54,7 +54,7 @@ jobs:
       - name: Audit 240 archived question structures and source warnings
         run: python3 scripts/audit_question_integrity.py
 
-      - name: Build v1.15
+      - name: Build v1.16
         run: python3 scripts/build_site.py
 
       - name: Validate 240 questions and one-question views
@@ -86,6 +86,6 @@ jobs:
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.15 historically checked R2 and R3 legal explanations"
+          git commit -m "Build 下3 trainer v1.16 checked sludge formulas and preserved source caveats"
           git pull --rebase origin main
           git push
