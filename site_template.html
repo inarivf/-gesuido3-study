@@ -468,7 +468,7 @@ function render(){
   if(x.sourceWarning)
    note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 元資料の転記に注意：</b> '+escapeHtml(x.sourceWarning)+'</div>';
   if(x.explanationWarning)
-   note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 参考問題（原本確認待ち・採点対象外）：</b> '+escapeHtml(x.explanationWarning)+'</div>';
+   note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 参考問題（原本確認待ち）：</b> '+escapeHtml(x.explanationWarning)+'</div>';
   if(isReferenceOnly(x))
    note.innerHTML+='<div style="margin-top:8px"><b>この問題は成績に一切加算しません。</b> 保存正答番号も原本確定まで参考にしてください。</div>';
  }
