@@ -127,7 +127,7 @@ if not errors:
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
         "studyRecommendation","explanationAuditNote","explanationReferences","reviewedCount","holdCount",
-        "v1.11","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
+        "v1.12","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
@@ -151,6 +151,12 @@ if not errors:
         fail("held source statuses absent")
     if 'gradedTotal=year=>SETS[year].filter(x=>!isReferenceOnly(x)).length' not in html:
         fail("grade exclusion contract missing")
+    if 'scoredQuestions(ALL).map(x=>state.items[x.id]).filter(Boolean)' not in html:
+        fail("dashboard must exclude held questions from all legacy progress statistics")
+    if 'for(const x of scoredQuestions(ALL))' not in html:
+        fail("category breakdown must exclude held questions")
+    if '旧60点方式・参考' not in html or '54点参考模試' not in html:
+        fail("legacy R2 results must be clearly distinguishable from new R2 result scoring")
     if '原本確認待ち6問を見る' not in html:
         fail("reference-only browsing entry missing")
 
@@ -179,4 +185,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.11, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
+print("VALIDATION PASS: v1.12, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
