@@ -9,6 +9,9 @@ on:
       - 'r7_meta.json'
       - 'r6_meta.json'
       - 'r3_meta.json'
+      - 'r2_meta.json'
+      - 'r2_import_audit.json'
+      - 'r2_source_excerpt.txt'
       - 'r6_build_audit.json'
       - 'r6_archive.html'
       - 'r7_mondai_3syu_official.pdf'
@@ -40,10 +43,10 @@ jobs:
       - name: Build one-question views
         run: python3 scripts/build_question_views.py
 
-      - name: Build v1.2
+      - name: Build v1.3
         run: python3 scripts/build_site.py
 
-      - name: Validate 180 questions and one-question views
+      - name: Validate 240 questions and one-question views
         run: python3 scripts/validate_site.py
 
       - name: Validate JavaScript syntax
@@ -69,6 +72,6 @@ jobs:
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.2 180-question site"
+          git commit -m "Build 下3 trainer v1.3 240-question site"
           git pull --rebase origin main
           git push
