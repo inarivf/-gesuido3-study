@@ -55,7 +55,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.5</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.6</span>
 <h1>💧 下3トレーナー</h1>
 <p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
@@ -82,6 +82,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <button class="mode" onclick="startMode('sequential')"><b>📚 年度順に解く</b><small>選んだ年度・分野を問番号順に進める。</small></button>
 <button class="mode" onclick="startMode('random20')"><b>⚡ ランダム20問</b><small>R7・R6・R3・R2を混ぜてもOK。短時間で回す。</small></button>
 <button class="mode" onclick="startMode('weak')"><b>🩹 弱点だけ復習</b><small>直近で間違えた・怪しい・未理解の問題。</small></button>
+<button class="mode" onclick="startMode('priority10')"><b>🧠 今日の重点10問</b><small>苦手や未回答を優先。10問だけ集中して復習。</small></button>
 <button class="mode" onclick="startMode('mock')"><b>⏱ 60問 模試</b><small>年度を1つ選び、3時間15分で本番形式。</small></button>
 </div>
 <div class="row" style="margin-top:12px">
@@ -95,6 +96,15 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 </select></label>
 <label>分野<select id="catFilter"><option value="ALL">全部</option></select></label>
 <button class="btn primary" onclick="startMode('filtered')">この条件で全部</button>
+</div>
+</section>
+
+<section id="resumeMockBox" class="session hidden" aria-live="polite">
+<div class="sessiontop">📝 途中の模試があります</div>
+<p class="muted" id="resumeMockInfo"></p>
+<div class="row">
+<button class="btn primary" onclick="resumeMock()">続きから再開</button>
+<button class="btn bad" onclick="discardSavedMock()">途中データを破棄</button>
 </div>
 </section>
 
@@ -186,6 +196,8 @@ const R2_QUESTIONS=__R2__;
 const SETS={R7:R7_QUESTIONS,R6:R6_QUESTIONS,R3:R3_QUESTIONS,R2:R2_QUESTIONS};
 const ALL=[...R7_QUESTIONS,...R6_QUESTIONS,...R3_QUESTIONS,...R2_QUESTIONS];
 const STATE_KEY="gesuido3_progress_v1";
+const MOCK_KEY="gesuido3_mock_draft_v1";
+const MOCK_DURATION_MS=195*60*1000;
 let state=loadState();
 let session=[];
 let pos=0;
@@ -196,6 +208,7 @@ let answeredCurrent=false;
 let sessionAnswers=Object.create(null);
 let mockFinished=false;
 let showAllWeak=false;
+let mockRunKey="";
 
 function loadState(){
  try{
