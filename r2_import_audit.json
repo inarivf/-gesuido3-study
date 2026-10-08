@@ -71,6 +71,15 @@
     42,
     52
   ],
+  "documented_source_repairs": [
+    17,
+    36
+  ],
+  "source_warning_qs": [
+    17,
+    36,
+    43
+  ],
   "choice_min_length": 2,
   "review_required": "Saved blog text is not the JSWA official PDF. Wording and tables should be visually inspected where the archive has anomalies."
 }
