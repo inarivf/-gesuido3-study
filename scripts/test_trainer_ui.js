@@ -292,6 +292,8 @@ assert.equal(afterClose.run('state.items["R7-01"].attempts'),beforeQ1+1);
 info("expired resume grades once and never restarts the clock");
 
 // Both explicit reset and backup import invalidate prior mock drafts.
+afterClose.el("yearFilter").value="R7";
+afterClose.run("rebuildCategory()");
 afterClose.run('startMode("mock")');
 assert(stored.has("gesuido3_mock_draft_v1"));
 afterClose.run("resetProgress()");
