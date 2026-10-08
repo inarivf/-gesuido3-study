@@ -108,6 +108,19 @@ if not errors:
     if r2audit.get("internal_key_rows")!=30: fail("R2 first-30 blog key incomplete")
     if r2audit.get("independent_key_rows")!=60: fail("R2 independent key not 60")
     if r2audit.get("key_mismatches")!=0: fail("R2 source answer mismatch")
+    if r2audit.get("documented_source_repairs")!=[17,36]: fail("R2 source repairs missing")
+    if r2audit.get("source_warning_qs")!=[17,36,43]: fail("R2 source warnings missing")
+    if "余剰汚泥量: 60m3/日" not in r2[16].get("stem",""):
+        fail("R2 Q17 retained inconsistent old 160m3/日")
+    if "5,000mg/L" not in r2[16].get("stem",""):
+        fail("R2 Q17 SS unit not repaired")
+    if "流出水SS濃度: 110mg/L" not in r2[35].get("stem",""):
+        fail("R2 Q36 SS unit not repaired")
+    if r2[35].get("choices",[])[2]!="50m3/日":
+        fail("R2 Q36 choice 3 not repaired")
+    for n in (17,36,43):
+        if not r2[n-1].get("sourceWarning"):
+            fail(f"R2 Q{n} missing original-source warning")
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
         "v1.3","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
