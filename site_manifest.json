@@ -1,5 +1,5 @@
 {
-  "version": "1.16",
+  "version": "1.17",
   "generated_from": [
     "site_template.html",
     "r7_meta.json",
@@ -8,6 +8,7 @@
     "r2_meta.json",
     "research/explanation_review_v001.json",
     "research/r3_explanation_review_v001.json",
+    "research/r2_unverified_explanations_v001.json",
     "r7_question_map.json",
     "r6_questions/"
   ],
