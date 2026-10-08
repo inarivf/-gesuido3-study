@@ -9,14 +9,15 @@
       "explanation": "好気的固形物滞留時間（ASRT）は、好気タンク内の固形物量を、1日あたりに系外へ排出する固形物量で割って求める。タンク内の固形物量は2,000m³×1,800mg/L＝3,600kg、余剰汚泥として排出する量は60m³/日×5,000mg/L＝300kg/日。したがって3,600÷300＝12日となり、正答は（4）。m³とmg/Lをそのまま掛けず、単位をkgにそろえるのがポイント。",
       "kind": "calculation",
       "status": "calculation_checked",
-      "evidence": "与えられた値からの単位換算と固形物収支"
+      "evidence": "与えられた値からの単位換算と固形物収支",
+      "formula": "(2000 × 1800) ÷ (60 × 5000) = 12日"
     },
     {
       "id": "R2-18",
       "answer": 2,
       "explanation": "正答は（2）。溶存酸素（MLDO）は、供給される酸素量と微生物・化学反応で消費される酸素量のバランスで変わる。硝化が進むと酸素消費が増え、よう素消費量が高い流入水や第一鉄イオンも酸素を消費する方向に働く。一方、溶解性BODが低い下水の流入は通常、有機物の分解に必要な酸素を減らすため、MLDOの急激な低下の原因としては不適切。",
       "kind": "technical",
-      "status": "explanation_draft",
+      "status": "needs_independent_source",
       "evidence": "原文選択肢と保存解答表に基づく暫定解説。独立資料未照合"
     },
     {
@@ -24,8 +25,19 @@
       "answer": 2,
       "explanation": "正答は（2）。高分子凝集剤の選定では、汚泥の性状や変動に対応できることが重要。薬注率の許容範囲が広ければ、汚泥の性状が多少変わっても適切な凝集状態を保ちやすい。一方、フロックが弱い（1）、脱水ろ液のSSが多い（3）、必要な薬注率が大きい（4）は、いずれも望ましい選定条件ではない。",
       "kind": "technical",
-      "status": "explanation_draft",
-      "evidence": "原文選択肢と保存解答表に基づく暫定解説。独立資料未照合"
+      "status": "source_checked_candidate",
+      "evidence": "東京都下水道局『凝集槽』は過不足のない薬注・良好なフロック形成を説明。2019年水環境学会論文は最適薬注率が汚泥性状で変化することを示す。",
+      "references": [
+        {
+          "title": "東京都下水道局 凝集槽",
+          "url": "https://www.gesui.metro.tokyo.lg.jp/contractor/suisitsu/information/8izikanri/44962"
+        },
+        {
+          "title": "水環境学会誌 高分子凝集剤の最適薬注率",
+          "url": "https://www.jstage.jst.go.jp/article/jswe/42/6/42_269/_article/-char/ja"
+        }
+      ]
     }
-  ]
+  ],
+  "reviewNote": "R2-17は計算照合済み。R2-23は公的運転資料と査読論文で基本原理を照合。R2-18は引き続き独立資料の確認待ち。公開用レビュー台帳にはまだ昇格していない。"
 }
