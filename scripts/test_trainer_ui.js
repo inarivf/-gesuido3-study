@@ -36,6 +36,7 @@ const choice=[1,2,3,4].map(n=>{
   const e=new FakeElement("choice"+n);e.dataset.a=String(n);e.className="choice";return e;
 });
 const stored=new Map();
+const alerts=[];
 const storage={getItem:k=>stored.get(k)??null,setItem:(k,v)=>stored.set(k,String(v))};
 const document={
   getElementById:elements,
@@ -55,6 +56,7 @@ const context=vm.createContext({
   setInterval:()=>1,clearInterval:()=>{},
   requestAnimationFrame:()=>{},
   confirm:()=>true,
+  alert:(msg)=>alerts.push(msg),
   window:{},
   Date,Math,JSON,Number,String,Object,Array,Boolean,console
 });
@@ -133,4 +135,73 @@ assert.equal(count("R7-01"),3);
 assert.equal(revealed(),false);
 info("new sessions retain history but do not leak answers");
 
-console.log("UI REGRESSION PASS: 4 scenarios");
+
+(async()=>{
+// Category statistics must show progress for answered and untouched categories.
+const categoryHtml=elements("categoryStats").innerHTML;
+assert(categoryHtml.includes("正答率"),"category dashboard should render accuracy");
+assert(categoryHtml.includes("未回答"),"category dashboard should show unpracticed categories");
+info("category progress shows studied and unst udied areas".replace("unst udied","unstudied"));
+
+// Ensure invalid or tampered JSON cannot overwrite any existing learning history.
+let attemptsBefore=count("R7-01");
+const good={items:{"R7-01":{
+  attempts:7,correct:5,wrong:2,lastChoice:4,lastCorrect:true,rating:"maybe"
+}},createdAt:"2026-10-08T12:00:00.000Z"};
+const tampered=JSON.parse(JSON.stringify(good));
+tampered.items["R7-01"].correct=8;
+assert.throws(()=>run('validateProgressBackup('+JSON.stringify(tampered)+')'));
+assert.equal(count("R7-01"),attemptsBefore);
+info("backup validation rejects inconsistent attempt totals");
+
+const input={value:"fake.json",files:[{size:150,text:async()=>JSON.stringify(tampered)}]};
+context.fakeImportEvent={target:input};
+await run("importProgress(fakeImportEvent)");
+assert.equal(count("R7-01"),attemptsBefore);
+assert.equal(alerts.length,1,"invalid backup should report the failure");
+assert.equal(input.value,"","file chooser should reset");
+info("bad backup does not change saved history");
+
+const validInput={value:"backup.json",files:[{size:150,text:async()=>JSON.stringify(good)}]};
+context.fakeImportEvent={target:validInput};
+await run("importProgress(fakeImportEvent)");
+assert.equal(count("R7-01"),7);
+assert.equal(run('state.items["R7-01"].correct'),5);
+assert.equal(run('state.items["R7-01"].rating'),"maybe");
+assert.equal(elements("quizCard").classList.contains("hidden"),true);
+assert.equal(elements("sessionBox").classList.contains("hidden"),true);
+assert.equal(validInput.value,"");
+assert.equal(JSON.parse(stored.get("gesuido3_progress_v1")).items["R7-01"].attempts,7);
+info("valid backup restores records while preserving the local storage key");
+
+// Session guards: a rejected mock launch must not damage an active study session.
+elements("yearFilter").value="ALL";
+run('startMode("sequential")');
+const prevMode=run("sessionMode");
+const prevLength=run("session.length");
+run('startMode("mock")');
+assert.equal(run("sessionMode"),prevMode);
+assert.equal(run("session.length"),prevLength);
+info("invalid mode change does not clobber an existing session");
+
+// Jumping off the current mock session must never discard the selected answers.
+elements("yearFilter").value="R7";
+run('startMode("mock")');
+run("answer(1)");
+const prevId=run("q().id");
+const prevCount=run("Object.keys(sessionAnswers).length");
+context.fakeOutside=[{id:"R7-61"}];
+run("jumpQuestion()");
+assert.equal(run("q().id"),prevId);
+assert.equal(run("Object.keys(sessionAnswers).length"),prevCount);
+
+// Reset clears visible session and counters, not only the numeric results.
+run("resetProgress()");
+assert.equal(run("Object.keys(state.items).length"),0);
+assert.equal(elements("quizCard").classList.contains("hidden"),true);
+assert.equal(elements("sessionBox").classList.contains("hidden"),true);
+info("progress reset clears stale quiz UI");
+
+console.log("UI REGRESSION PASS: 10 scenarios");
+})().catch(e=>{console.error(e);process.exitCode=1});
+
