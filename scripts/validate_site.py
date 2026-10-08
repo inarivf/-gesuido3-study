@@ -15,23 +15,30 @@ R6_EXECUTOR_KEY=[
     4,4,1,3,3,3,1,2,1,3,4,4,1,1,2,4,2,3,4,2,
     3,1,2,1,4,3,3,4,2,4,3,2,4,2,4,1,3,2,3,1
 ]
+R3_ARCHIVE_KEY=[
+    3,4,1,3,4,2,3,4,4,1,3,1,4,3,4,1,4,2,1,2,
+    1,3,2,2,4,3,1,3,1,1,3,2,3,2,4,4,2,2,3,2,
+    2,4,3,3,1,2,2,4,4,4,1,3,1,2,3,1,1,2,4,4
+]
 
 def fail(msg): errors.append(msg)
 
 def norm_text(value):
     return unicodedata.normalize("NFKC",value or "").replace("\u3000"," ")
 
-for file in ["index.html","site_template.html","r7_meta.json","r6_meta.json","r6_build_audit.json","r7_mondai_3syu_official.pdf","r6_archive.html","r7_question_map.json","question_view_audit.json"]:
+for file in ["index.html","site_template.html","r7_meta.json","r6_meta.json","r3_meta.json","r6_build_audit.json","r7_mondai_3syu_official.pdf","r6_archive.html","r7_question_map.json","question_view_audit.json"]:
     if not (ROOT/file).exists():
         fail(f"missing {file}")
 
 if not errors:
     r7=json.loads((ROOT/"r7_meta.json").read_text(encoding="utf-8"))["questions"]
     r6=json.loads((ROOT/"r6_meta.json").read_text(encoding="utf-8"))["questions"]
-    allq=r7+r6
+    r3=json.loads((ROOT/"r3_meta.json").read_text(encoding="utf-8"))["questions"]
+    allq=r7+r6+r3
     if len(r7)!=60: fail(f"R7 count {len(r7)}")
     if len(r6)!=60: fail(f"R6 count {len(r6)}")
-    if len(allq)!=120: fail(f"total count {len(allq)}")
+    if len(r3)!=60: fail(f"R3 count {len(r3)}")
+    if len(allq)!=180: fail(f"total count {len(allq)}")
     ids=[q["id"] for q in allq]
     if len(ids)!=len(set(ids)): fail("duplicate question IDs")
     bad=[q["id"] for q in allq if q.get("answer") not in [1,2,3,4]]
@@ -41,6 +48,7 @@ if not errors:
     for label,qs,key,round_label in [
         ("R7",r7,R7_OFFICIAL_KEY,"令和7年度・第51回"),
         ("R6",r6,R6_EXECUTOR_KEY,"令和6年度・第50回"),
+        ("R3",r3,R3_ARCHIVE_KEY,"令和3年度・第47回"),
     ]:
         by_q={int(q.get("q",0)):q for q in qs}
         if sorted(by_q)!=list(range(1,61)):
@@ -58,6 +66,12 @@ if not errors:
                 fail(f"{label} Q{n} yearLabel {q.get('yearLabel')} != {round_label}")
             if int(q.get("answer",0))!=key[n-1]:
                 fail(f"{label} Q{n} answer {q.get('answer')} != canonical {key[n-1]}")
+            if label=="R3":
+                if not str(q.get("stem","")).strip():
+                    fail(f"R3 Q{n} missing stem")
+                choices=q.get("choices")
+                if not isinstance(choices,list) or len(choices)!=4 or any(not str(c).strip() for c in choices):
+                    fail(f"R3 Q{n} choices invalid")
 
     qmap=json.loads((ROOT/"r7_question_map.json").read_text(encoding="utf-8")).get("questions",{})
     if len(qmap)!=60: fail(f"R7 question crop map count {len(qmap)}")
@@ -81,7 +95,7 @@ if not errors:
 
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
-        "v1.1","実過去問120問","R7_QUESTIONS","R6_QUESTIONS",
+        "v1.2","実過去問180問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
@@ -90,9 +104,10 @@ if not errors:
     forbidden=["docs.google.com/gview","id=\"officialPdf\"","v0.6","v0.7","v0.8","./r7_pages/page-"]
     for x in forbidden:
         if x in html: fail(f"index contains obsolete marker: {x}")
-    if html.count("__R7__") or html.count("__R6__"): fail("unreplaced placeholders")
+    if html.count("__R7__") or html.count("__R6__") or html.count("__R3__"): fail("unreplaced placeholders")
     if len(re.findall(r'"id":"R7-',html))!=60: fail("embedded R7 count not 60")
     if len(re.findall(r'"id":"R6-',html))!=60: fail("embedded R6 count not 60")
+    if len(re.findall(r'"id":"R3-',html))!=60: fail("embedded R3 count not 60")
 
     archive=(ROOT/"r6_archive.html").read_text(encoding="utf-8")
     archive_soup=BeautifulSoup(archive,"html.parser")
@@ -119,4 +134,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.1, 120 questions, identity/answer keys checked, question choices checked, one-question views 60/60 + 60/60")
+print("VALIDATION PASS: v1.2, 180 questions, identity/answer keys checked, R3 stems/choices checked, one-question views R7 60/60 + R6 60/60")
