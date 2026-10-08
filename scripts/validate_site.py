@@ -127,7 +127,7 @@ if not errors:
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
         "studyRecommendation","explanationAuditNote","explanationReferences","reviewedCount","holdCount",
-        "v1.10","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
+        "v1.11","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
@@ -147,6 +147,12 @@ if not errors:
     for item in reviews["holds"]:
         if item["warning"] not in html:
             fail(f"source damage warning missing in published bundle: {item['id']}")
+    if 'HOLD_STATUSES=new Set(["source_damaged","figure_unverified","answer_needs_review"])' not in html:
+        fail("held source statuses absent")
+    if 'gradedTotal=year=>SETS[year].filter(x=>!isReferenceOnly(x)).length' not in html:
+        fail("grade exclusion contract missing")
+    if '原本確認待ち6問を見る' not in html:
+        fail("reference-only browsing entry missing")
 
     archive=(ROOT/"r6_archive.html").read_text(encoding="utf-8")
     archive_soup=BeautifulSoup(archive,"html.parser")
@@ -173,4 +179,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.10, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
+print("VALIDATION PASS: v1.11, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
