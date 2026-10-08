@@ -295,7 +295,7 @@ function getPendingMock(){
       ||!Number.isInteger(d.pos)||d.pos<0||d.pos>=60
       ||typeof d.runKey!=="string"||d.runKey.length<5||d.runKey.length>120
       ||!d.answers||typeof d.answers!=="object"||Array.isArray(d.answers))return null;
-  if(state.lastGradedMockKey===d.runKey)return null;
+  if(state.lastGradedMockKey===d.runKey||(Array.isArray(state.mockHistory)&&state.mockHistory.some(x=>x.runKey===d.runKey)))return null;
   const permitted=new Set(SETS[d.year].map(x=>x.id));
   const entries=Object.entries(d.answers);
   if(entries.length>60||entries.some(([id,rec])=>
@@ -377,6 +377,7 @@ function startMode(mode){
  mockRunKey=mode==="mock"?String(Date.now())+"-"+nextSession[0].year+"-"+Math.random().toString(36).slice(2):"";
  document.getElementById("mockResult").classList.add("hidden");
  document.getElementById("mockResult").textContent="";
+ document.getElementById("mockRetryWrong").classList.add("hidden");
  document.getElementById("finishMockBtn").classList.toggle("hidden",mode!=="mock");
  startTimer(mode==="mock");
  if(mode==="mock")saveMockDraft();
@@ -402,7 +403,7 @@ function render(){
  answeredCurrent=!!sessionAnswers[x.id]&&(sessionMode!=="mock"||mockFinished);
  document.getElementById("qLabel").textContent=x.yearLabel+"　問"+x.q;
  document.getElementById("qMeta").textContent=x.category+" ｜ "+x.title;
- document.getElementById("sessionLabel").textContent=sessionMode==="mock"?"模試":sessionMode==="random20"?"ランダム20問":sessionMode==="priority10"?"重点10問":sessionMode==="weak"?"弱点復習":"演習";
+ document.getElementById("sessionLabel").textContent=sessionMode==="mock"?"模試":sessionMode==="random20"?"ランダム20問":sessionMode==="priority10"?"重点10問":sessionMode==="mistakes"?"模試の誤答復習":sessionMode==="weak"?"弱点復習":"演習";
  document.getElementById("sessionCount").textContent=(pos+1)+" / "+session.length+(sessionMode==="mock"?"　回答済み："+Object.keys(sessionAnswers).length+"/"+session.length:"");
  document.getElementById("sessionProgress").style.width=((pos+1)/session.length*100)+"%";
  const jump=document.getElementById("jumpSelect");jump.innerHTML="";
@@ -490,21 +491,30 @@ function finishMock(reason){
  if(reason==="manual"&&!confirm("模試を終了して採点しますか？未回答の問題は0点になります。"))return;
  mockFinished=true;
  clearInterval(timerHandle);timerHandle=null;
- if(state.lastGradedMockKey===mockRunKey&&mockRunKey){
+ if(mockRunKey&&(state.lastGradedMockKey===mockRunKey||(Array.isArray(state.mockHistory)&&state.mockHistory.some(x=>x.runKey===mockRunKey)))){
   clearMockDraft();return;
  }
  document.getElementById("finishMockBtn").classList.add("hidden");
  let correct=0,wrong=0;
+ const wrongIds=[],blankIds=[];
  for(const x of session){
   const rec=sessionAnswers[x.id];
-  if(!rec)continue;
+  if(!rec){blankIds.push(x.id);continue}
   const ok=rec.choice===x.answer;
+  if(!ok)wrongIds.push(x.id);
   const s=itemState(x.id);
   s.attempts++;s.lastChoice=rec.choice;s.lastCorrect=ok;
   if(ok){correct++;s.correct++}else{wrong++;s.wrong++;s.rating="ng"}
  }
  const blank=session.length-correct-wrong;
+ const finished={
+  runKey:mockRunKey,year:session[0].year,finishedAt:new Date().toISOString(),
+  score:correct,total:session.length,wrongIds,blankIds,
+  reason:reason==="time"?"time":"manual"
+ };
+ state.mockHistory=[finished,...(Array.isArray(state.mockHistory)?state.mockHistory:[]).filter(r=>r.runKey!==mockRunKey)].slice(0,MAX_MOCK_HISTORY);
  state.lastGradedMockKey=mockRunKey;
+ document.getElementById("mockRetryWrong").classList.toggle("hidden",wrongIds.length===0);
  const result=document.getElementById("mockResult");
  result.textContent="模試結果："+correct+" / "+session.length+"点　誤答："+wrong+"問　未回答："+blank+"問"+(reason==="time"?"（制限時間終了）":"");
  result.classList.remove("hidden");
@@ -552,7 +562,52 @@ function updateDashboard(){
  more.classList.toggle("hidden",weak.length<=30);
  more.textContent=showAllWeak?"最初の30問だけ表示":"弱点をすべて表示（"+weak.length+"問）";
  updateCategoryStats();
+ renderMockHistory();
 }
+function renderMockHistory(){
+ const box=document.getElementById("mockHistory");
+ const history=Array.isArray(state.mockHistory)?state.mockHistory:[];
+ if(!history.length){
+  box.innerHTML='<div class="muted">まだ模試の成績はありません。次の60問模試から記録されます。</div>';
+  return;
+ }
+ box.innerHTML=history.slice(0,10).map((rec,i)=>{
+  const prev=history.slice(i+1).find(p=>p.year===rec.year);
+  const diff=prev?'　前回比：'+(rec.score-prev.score>0?'+':'')+(rec.score-prev.score)+'点':"　初回";
+  const date=new Date(rec.finishedAt);
+  const stamp=Number.isFinite(date.getTime())?date.toLocaleString("ja-JP"):"日時不明";
+  const pct=Math.round(rec.score/rec.total*100);
+  return '<div class="exam-record"><div class="exam-top"><b>'+escapeHtml(rec.year)+'　'+rec.score+'/'+rec.total+'点</b><span class="exam-details">'+escapeHtml(stamp)+escapeHtml(diff)+'</span></div>'+
+   '<div class="exam-track"><i style="width:'+pct+'%"></i></div>'+
+   '<div class="exam-details">誤答：'+rec.wrongIds.length+'問　未回答：'+rec.blankIds.length+'問'+
+   (rec.reason==="time"?'　時間切れ':'')+'</div>'+
+   (rec.wrongIds.length?'<button class="btn good" style="margin-top:8px" onclick="startMistakeReview('+i+')">この回の誤答'+rec.wrongIds.length+'問を解く</button>':'')+
+   '</div>';
+ }).join("");
+}
+function startMistakeReview(index=0){
+ const history=Array.isArray(state.mockHistory)?state.mockHistory:[];
+ const rec=history[index];
+ if(!rec||!Array.isArray(rec.wrongIds))return toast("復習する模試記録がありません");
+ const questions=rec.wrongIds.map(id=>QUESTION_BY_ID.get(id)).filter(Boolean);
+ if(!questions.length)return toast("この模試は誤答がありません！");
+ const draft=getPendingMock();
+ if((draft||sessionMode==="mock"&&!mockFinished)
+   &&!confirm("途中の模試は破棄されます。誤答の復習に進みますか？"))return;
+ if(draft)clearMockDraft();
+ clearInterval(timerHandle);timerHandle=null;timerEndsAt=0;
+ document.getElementById("timer").textContent="";
+ session=questions;
+ sessionMode="mistakes";pos=0;answeredCurrent=false;
+ sessionAnswers=Object.create(null);mockFinished=false;mockRunKey="";
+ document.getElementById("mockRetryWrong").classList.add("hidden");
+ document.getElementById("finishMockBtn").classList.add("hidden");
+ document.getElementById("mockResult").classList.add("hidden");
+ document.getElementById("quizCard").classList.remove("hidden");
+ document.getElementById("sessionBox").classList.remove("hidden");
+ render();
+}
+
 function toggleWeakList(){showAllWeak=!showAllWeak;updateDashboard()}
 function updateCategoryStats(){
  const buckets=new Map();
