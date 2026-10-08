@@ -37,7 +37,7 @@ const choice=[1,2,3,4].map(n=>{
 });
 const stored=new Map();
 const alerts=[];
-const storage={getItem:k=>stored.get(k)??null,setItem:(k,v)=>stored.set(k,String(v))};
+const storage={getItem:k=>stored.get(k)??null,setItem:(k,v)=>stored.set(k,String(v)),removeItem:k=>stored.delete(k)};
 const document={
   getElementById:elements,
   createElement:(tag)=>new FakeElement(tag),
@@ -202,6 +202,110 @@ assert.equal(elements("quizCard").classList.contains("hidden"),true);
 assert.equal(elements("sessionBox").classList.contains("hidden"),true);
 info("progress reset clears stale quiz UI");
 
-console.log("UI REGRESSION PASS: 10 scenarios");
+
+// Priority mode selects 10 unique questions, led by weak/uncertain items.
+elements("yearFilter").value="R7";
+run('itemState("R7-59").rating="ng"');
+run('itemState("R7-60").rating="maybe"');
+run('itemState("R7-58").rating="ok"');
+run('startMode("priority10")');
+const dailyIds=Array.from(run("session.map(x=>x.id)"));
+assert.equal(dailyIds.length,10);
+assert.equal(new Set(dailyIds).size,10);
+assert(dailyIds.includes("R7-59")&&dailyIds.includes("R7-60"));
+assert(!dailyIds.includes("R7-58"),"mastered items should not displace unanswered");
+info("priority ten picks weak questions without duplicates");
+
+// The actual inline UI is loaded into a fresh JavaScript VM, using the same
+// persistent localStorage map but distinct DOM. This simulates re-opening a tab.
+function bootFresh(){
+ const freshNodes=new Map();
+ const el=id=>{if(!freshNodes.has(id))freshNodes.set(id,new FakeElement(id));return freshNodes.get(id)};
+ const buttons=[1,2,3,4].map(n=>{
+  const e=new FakeElement("fresh"+n);e.dataset.a=String(n);e.className="choice";return e;
+ });
+ const doc={
+  getElementById:el,
+  createElement:tag=>new FakeElement(tag),
+  querySelectorAll:sel=>{assert.equal(sel,".choice");return buttons},
+  querySelector:sel=>{
+    const found=sel.match(/\.choice\[data-a="(\d)"\]/);assert(found);
+    return buttons[+found[1]-1];
+  }
+ };
+ const ctx=vm.createContext({
+   document:doc,localStorage:storage,setTimeout:()=>1,clearTimeout:()=>{},
+   setInterval:()=>1,clearInterval:()=>{},requestAnimationFrame:()=>{},
+   confirm:()=>true,alert:msg=>alerts.push(msg),window:{},
+   Date,Math,JSON,Number,String,Object,Array,Boolean,console
+ });
+ vm.runInContext(parts[0][1],ctx,{filename:"reloaded-index-inline.js"});
+ return {context:ctx,run:src=>vm.runInContext(src,ctx),el,buttons};
+}
+run('startMode("mock")');
+const runKey=run("mockRunKey");
+const deadline=run("timerEndsAt");
+run('answer(4)');
+run('move(1)');
+run('answer(2)');
+const draft=JSON.parse(stored.get("gesuido3_mock_draft_v1"));
+assert.equal(draft.runKey,runKey);
+assert.equal(draft.deadline,deadline);
+assert.equal(Object.keys(draft.answers).length,2);
+assert.equal(draft.pos,1);
+info("mock draft saves answers, position and absolute expiry");
+
+const resumed=bootFresh();
+assert.equal(resumed.el("resumeMockBox").classList.contains("hidden"),false);
+assert(resumed.el("resumeMockInfo").textContent.includes("2/60問"));
+resumed.run("resumeMock()");
+assert.equal(resumed.run("sessionMode"),"mock");
+assert.equal(resumed.run("session.length"),60);
+assert.equal(resumed.run("pos"),1);
+assert.equal(resumed.run("timerEndsAt"),deadline);
+assert.equal(resumed.run("Object.keys(sessionAnswers).length"),2);
+assert(!resumed.el("reveal").classList.contains("show"));
+resumed.run('move(-1)');
+assert(resumed.buttons[3].classList.contains("selected"));
+assert(!resumed.buttons.some(b=>b.classList.contains("correct")));
+info("reloaded mock restores selected answers but conceals the key");
+
+// Expired snapshots are scored exactly once, even when resumed after the cutoff.
+const nearPast=JSON.parse(stored.get("gesuido3_mock_draft_v1"));
+nearPast.deadline=Date.now()-100;
+nearPast.startedAt=nearPast.deadline-195*60*1000;
+stored.set("gesuido3_mock_draft_v1",JSON.stringify(nearPast));
+const expired=bootFresh();
+assert(expired.el("resumeMockInfo").textContent.includes("制限時間終了"));
+const beforeQ1=expired.run('state.items["R7-01"]?.attempts||0');
+expired.run("resumeMock()");
+assert.equal(expired.run("mockFinished"),true);
+assert.equal(expired.run('state.items["R7-01"].attempts'),beforeQ1+1);
+assert.equal(expired.run("state.lastGradedMockKey"),runKey);
+assert.equal(stored.get("gesuido3_mock_draft_v1"),undefined);
+expired.run('finishMock("time")');
+assert.equal(expired.run('state.items["R7-01"].attempts'),beforeQ1+1);
+assert(expired.el("mockResult").textContent.includes("/ 60点"));
+const afterClose=bootFresh();
+assert.equal(afterClose.el("resumeMockBox").classList.contains("hidden"),true);
+assert.equal(afterClose.run('state.items["R7-01"].attempts'),beforeQ1+1);
+info("expired resume grades once and never restarts the clock");
+
+// Both explicit reset and backup import invalidate prior mock drafts.
+afterClose.run('startMode("mock")');
+assert(stored.has("gesuido3_mock_draft_v1"));
+afterClose.run("resetProgress()");
+assert.equal(stored.has("gesuido3_mock_draft_v1"),false);
+afterClose.run('startMode("mock")');
+assert(stored.has("gesuido3_mock_draft_v1"));
+const backup={items:{"R7-01":{attempts:1,correct:1,wrong:0,lastChoice:4,lastCorrect:true,rating:"ok"}}};
+const file={value:"backup.json",files:[{size:160,text:async()=>JSON.stringify(backup)}]};
+afterClose.context.restoreInput={target:file};
+await afterClose.run("importProgress(restoreInput)");
+assert.equal(stored.has("gesuido3_mock_draft_v1"),false);
+assert.equal(afterClose.run('state.items["R7-01"].attempts'),1);
+info("reset and backup import invalidate stale mock snapshots");
+
+console.log("UI REGRESSION PASS: 15 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
