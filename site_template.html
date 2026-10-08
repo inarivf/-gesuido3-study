@@ -473,8 +473,15 @@ function render(){
   if(isReferenceOnly(x))
    note.innerHTML+='<div style="margin-top:8px"><b>採点対象外：この問題は成績に一切加算しません。</b> 保存正答番号も原本確定まで参考にしてください。</div>';
  }
+ // Never leave the previous question's answer or evidence in the DOM.
+ // Re-rendering a previously answered question restores it via showFeedback().
  document.getElementById("reveal").classList.remove("show");
- document.getElementById("explanationAuditNote").textContent="";
+ for(const id of ["correctLine","explain","trap","memo","explanationAuditNote"])
+  document.getElementById(id).textContent="";
+ const refs=document.getElementById("explanationReferences");
+ refs.innerHTML="";refs.classList.add("hidden");
+ const formula=document.getElementById("formula");
+ formula.textContent="";formula.classList.add("hidden");
  document.querySelectorAll(".choice").forEach(b=>{b.className="choice";b.disabled=mockFinished||sessionMode==="reference"});
  document.getElementById("prevBtn").disabled=pos===0;
  document.getElementById("nextBtn").disabled=pos===session.length-1;
