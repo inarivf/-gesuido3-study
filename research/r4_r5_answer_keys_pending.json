@@ -78,7 +78,8 @@
       "grading": {
         "method": "normal",
         "bonus": 0
-      }
+      },
+      "original_pdf_online_available": false
     },
     "R5": {
       "year": 2023,
@@ -150,7 +151,7 @@
       "sources": [
         "https://gesuidou.link/gesan49/",
         "https://s3-us-west-1.amazonaws.com/static.l-mate.net/pdf/answer_gesui/2023-02.pdf",
-        "https://www.jswa.go.jp/kentei/pdf/shikenmondai-seito-kohyo.pdf"
+        "https://www.jswa.go.jp/kentei/pdf/annai/20231116oshirase.pdf"
       ],
       "restrictions": [
         {
@@ -158,14 +159,16 @@
           "status": "VOID",
           "reason": "選択肢に正解なし",
           "official_handling": "全員に1点付与",
-          "score_value": 1
+          "score_value": 1,
+          "evidence": "https://s3-us-west-1.amazonaws.com/static.l-mate.net/pdf/answer_gesui/2023-02.pdf"
         }
       ],
       "grading": {
         "method": "all-questions-60-points",
         "bonus": 1,
         "exception_question": 16
-      }
+      },
+      "original_pdf_online_available": false
     }
   }
 }
