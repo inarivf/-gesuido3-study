@@ -50,13 +50,13 @@ if "__R7__" in html or "__R6__" in html or "__R3__" in html or "__R2__" in html:
 
 (ROOT/"index.html").write_text(html,encoding="utf-8")
 manifest={
-    "version":"1.9",
+    "version":"1.10",
     "generated_from":["site_template.html","r7_meta.json","r6_meta.json","r3_meta.json","r2_meta.json","research/explanation_review_v001.json","r7_question_map.json","r6_questions/"],
     "question_counts":{"R7":60,"R6":60,"R3":60,"R2":60,"total":240},
     "r7_source":"日本下水道事業団 令和7年度 第51回 第3種 公式問題PDF（1問単位ビュー生成）",
     "r6_source":"保存実問題アーカイブ（1問単位ビュー生成）。正答60問照合済み",
     "r3_source":"令和3年度 第47回 実問題保存本文を整形表示。独立正答資料と60問照合済み",
-    "r2_source":"令和2年度 第46回 実問題保存本文。独立正答資料と60問照合済み。詳細解説未検証",
+    "r2_source":"令和2年度 第46回 実問題保存本文。独立正答資料と60問照合済み。解説は個別に独立監査中",
     "generated_file":"index.html"
 }
 (ROOT/"site_manifest.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
