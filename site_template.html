@@ -55,13 +55,13 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.16</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.17</span>
 <h1>💧 下3トレーナー</h1>
 <p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
 <section class="card">
 <h2>📚 解説品質の確認状況</h2>
-<p class="muted">全240問のうち、独立した公的資料または計算で詳しい解説を確認した問題は <b id="reviewedCount">0</b> 問。原本確認待ちは <b id="holdCount">0</b> 問で、通常演習・模試の成績から除外します。残りの問題にも解説の未検証箇所があります。</p>
+<p class="muted">全240問のうち、独立した公的資料または計算で詳しい解説を確認した問題は <b id="reviewedCount">0</b> 問。追加の解説案はあるものの独立検証待ちの問題は <b id="draftCount">0</b> 問。原本確認待ちは <b id="holdCount">0</b> 問で、通常演習・模試の成績から除外します。残る問題にも解説の未検証箇所があります。</p>
 <p class="muted" id="gradingPolicy">通常演習の採点対象：234問。令和2年度の参考模試は60問表示・54問採点。これは正式な60問模試や合否判定の代用ではありません。</p>
 <p class="muted" id="sourceIntegrityNote">📋 原文監査：令和7年度は公式PDFの切出し、令和6年度は保存問題の切出し。令和3・2年度は保存本文の整形データです。令和2年度の問17・36は保存原文を数値・単位に基づき補正しており、当該年度の公式原本との完全一致はまだ確認できていません。原文一致と正答番号の照合、解説の検証は別の判定です。計算問題では途中式と単位換算を確認しても、保存問題の元原文を保証するものではありません。法令問題の「正解」は出題当時を基準に説明し、2025年の大腸菌指標改正などは注記で区別しています。</p>
 </section>
@@ -464,12 +464,14 @@ function render(){
   document.getElementById("sourceLink").textContent=is2?"R2実問題の保存元を開く":"R3実問題の保存元を開く";
   document.getElementById("viewerNote").textContent="問"+x.q+"を表示中。本文・選択肢は保存資料から収録。";
  }
- if(x.sourceWarning||x.explanationWarning||isReferenceOnly(x)){
+ if(x.sourceWarning||x.explanationWarning||x.editorialWarning||isReferenceOnly(x)){
   const note=document.getElementById("sourceNotice");
   if(x.sourceWarning)
    note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 元資料の転記に注意：</b> '+escapeHtml(x.sourceWarning)+'</div>';
   if(x.explanationWarning)
    note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 参考問題（原本確認待ち）：</b> '+escapeHtml(x.explanationWarning)+'</div>';
+  if(x.editorialWarning)
+   note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 元文の要確認箇所（通常演習の採点対象）：</b> '+escapeHtml(x.editorialWarning)+'</div>';
   if(isReferenceOnly(x))
    note.innerHTML+='<div style="margin-top:8px"><b>採点対象外：この問題は成績に一切加算しません。</b> 保存正答番号も原本確定まで参考にしてください。</div>';
  }
@@ -525,6 +527,8 @@ function showFeedback(x,choice){
   ?"この解説は記載の法令・公的資料に照らして内容確認済み（全240問の監査完了を意味しません）"
   :x.reviewStatus==="calculation_checked"
   ?"この解説の式と数値は再計算済み（原問題と一次資料の完全照合ではありません）"
+  :x.reviewStatus==="explanation_draft"
+  ?"解説案（個別の技術・法令資料との独立照合は未完了）。正答表との一致と解説の正しさは別です。"
   :x.reviewStatus==="source_damaged"||x.reviewStatus==="figure_unverified"||x.reviewStatus==="answer_needs_review"
   ?"原資料の表記・図表が未確定のため参考扱い"
   :x.year==="R2"&&(x.q===17||x.q===36)
@@ -627,6 +631,7 @@ function rebuildCategory(){
 }
 function updateDashboard(){
  document.getElementById("reviewedCount").textContent=ALL.filter(x=>x.reviewStatus==="source_checked"||x.reviewStatus==="calculation_checked").length;
+ document.getElementById("draftCount").textContent=ALL.filter(x=>x.reviewStatus==="explanation_draft").length;
  document.getElementById("holdCount").textContent=ALL.filter(x=>x.reviewStatus==="source_damaged"||x.reviewStatus==="figure_unverified"||x.reviewStatus==="answer_needs_review").length;
  // Preserve every legacy record in localStorage, but never count answers
  // to held original questions in the current learning statistics.
