@@ -55,7 +55,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <body>
 <div class="shell">
 <header class="hero">
-<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問180問</span><span class="badge">v1.2</span>
+<span class="badge">下水道技術検定 第3種</span><span class="badge">実過去問240問</span><span class="badge">v1.3</span>
 <h1>💧 下3トレーナー</h1>
 <p>本当に出た問題を、1問ずつ大きく表示。回答後にチャッピー解説。</p>
 </header>
@@ -66,7 +66,7 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <div class="statbox"><strong id="statAnswered">0</strong><span>回答した問題</span></div>
 <div class="statbox"><strong id="statAccuracy">--</strong><span>通算正答率</span></div>
 <div class="statbox"><strong id="statWeak">0</strong><span>弱点問題</span></div>
-<div class="statbox"><strong id="statTotal">180</strong><span>実過去問</span></div>
+<div class="statbox"><strong id="statTotal">240</strong><span>実過去問</span></div>
 </div>
 </section>
 
@@ -74,17 +74,18 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <h2>今日どうやる？</h2>
 <div class="modes">
 <button class="mode" onclick="startMode('sequential')"><b>📚 年度順に解く</b><small>選んだ年度・分野を問番号順に進める。</small></button>
-<button class="mode" onclick="startMode('random20')"><b>⚡ ランダム20問</b><small>R7・R6・R3を混ぜてもOK。短時間で回す。</small></button>
+<button class="mode" onclick="startMode('random20')"><b>⚡ ランダム20問</b><small>R7・R6・R3・R2を混ぜてもOK。短時間で回す。</small></button>
 <button class="mode" onclick="startMode('weak')"><b>🩹 弱点だけ復習</b><small>直近で間違えた・怪しい・未理解の問題。</small></button>
 <button class="mode" onclick="startMode('mock')"><b>⏱ 60問 模試</b><small>年度を1つ選び、3時間15分で本番形式。</small></button>
 </div>
 <div class="row" style="margin-top:12px">
 <label>年度
 <select id="yearFilter" onchange="rebuildCategory()">
-<option value="ALL">R7＋R6＋R3 ミックス</option>
+<option value="ALL">R7＋R6＋R3＋R2 ミックス</option>
 <option value="R7">令和7年度・第51回</option>
 <option value="R6">令和6年度・第50回</option>
 <option value="R3">令和3年度・第47回</option>
+<option value="R2">令和2年度・第46回</option>
 </select></label>
 <label>分野<select id="catFilter"><option value="ALL">全部</option></select></label>
 <button class="btn primary" onclick="startMode('filtered')">この条件で全部</button>
@@ -153,7 +154,8 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 <p>✅ <b>令和7年度 第51回 60問</b>：日本下水道事業団の公式PDF原本から、各問を自動検出して1問単位で表示。</p>
 <p>✅ <b>令和6年度 第50回 60問</b>：実問題保存版を1問単位に分割。問1〜60と正答60問を照合し、不一致0件。</p>
 <p>✅ <b>令和3年度 第47回 60問</b>：保存されている実問題本文を1問単位に整形。別の正答資料と60問照合し、不一致0件。</p>
-<p class="muted">R6・R3は日本下水道事業団の公式サイトで問題PDFの掲載期間が終了しているため、保存資料を使用しています。似た問題・生成問題への置換はしていません。</p>
+<p>✅ <b>令和2年度 第46回 60問</b>：実問題保存本文を分割し、設問60・選択肢240を照合。正答は別の一覧60問と照合。</p>
+<p class="muted">R6・R3・R2は当時の公式問題PDFの公開終了により保存資料を使用しています。R2の詳細解説は未検証のため正答番号と出典のみ表示します。</p>
 </section>
 </div>
 
@@ -168,8 +170,9 @@ select{border:1px solid #cbd8dc;background:#fff;border-radius:11px;padding:9px 1
 const R7_QUESTIONS=__R7__;
 const R6_QUESTIONS=__R6__;
 const R3_QUESTIONS=__R3__;
-const SETS={R7:R7_QUESTIONS,R6:R6_QUESTIONS,R3:R3_QUESTIONS};
-const ALL=[...R7_QUESTIONS,...R6_QUESTIONS,...R3_QUESTIONS];
+const R2_QUESTIONS=__R2__;
+const SETS={R7:R7_QUESTIONS,R6:R6_QUESTIONS,R3:R3_QUESTIONS,R2:R2_QUESTIONS};
+const ALL=[...R7_QUESTIONS,...R6_QUESTIONS,...R3_QUESTIONS,...R2_QUESTIONS];
 const STATE_KEY="gesuido3_progress_v1";
 let state=loadState();
 let session=[];
@@ -185,7 +188,7 @@ function loadState(){
   if(x&&x.items)return x;
  }catch(e){}
  const fresh={items:{},createdAt:new Date().toISOString()};
- for(const y of ["R7","R6"]){
+ for(const y of ["R7","R6","R3","R2"]){
   try{
    const old=JSON.parse(localStorage.getItem("gesuido3_real_"+y+"_v08")||"null");
    if(old&&old.answered){
@@ -232,7 +235,7 @@ function startMode(mode){
  else if(mode==="weak"){session=pool.filter(isWeak);if(!session.length){toast("この条件の弱点問題はまだありません");return}}
  else if(mode==="mock"){
   const y=document.getElementById("yearFilter").value;
-  if(y==="ALL"){toast("模試はR7・R6・R3のどれか1年度を選んでください");return}
+  if(y==="ALL"){toast("模試はR7・R6・R3・R2のどれか1年度を選んでください");return}
   session=[...SETS[y]].sort((a,b)=>a.q-b.q);
  }else session=[...pool].sort((a,b)=>b.year.localeCompare(a.year)||a.q-b.q);
  pos=0;answeredCurrent=false;
@@ -255,7 +258,7 @@ function startTimer(on){
 }
 function render(){
  if(!session.length)return;
- const x=q(),is7=x.year==="R7",is6=x.year==="R6",is3=x.year==="R3";
+ const x=q(),is7=x.year==="R7",is6=x.year==="R6",is3=x.year==="R3",is2=x.year==="R2";
  answeredCurrent=false;
  document.getElementById("qLabel").textContent=x.yearLabel+"　問"+x.q;
  document.getElementById("qMeta").textContent=x.category+" ｜ "+x.title;
@@ -282,12 +285,16 @@ function render(){
   document.getElementById("sourceLink").href="./r6_archive.html#r6q"+x.q;
   document.getElementById("sourceLink").textContent="R6実問題の原保存版を開く";
   document.getElementById("viewerNote").textContent="問"+x.q+"だけを表示中。";
- }else if(is3){
+ }else if(is3||is2){
   r3.innerHTML='<div class="r3stem">'+escapeHtml(x.stem)+'</div>'+x.choices.map((c,i)=>'<div class="r3choice"><b>（'+(i+1)+'）</b> '+escapeHtml(c)+'</div>').join("");
   r3.classList.remove("hidden");
-  document.getElementById("sourceNotice").innerHTML="<b>第47回に実際に出題された問題です。</b> 保存されている実問題本文を読みやすく整形して表示しています。正答は別資料と60問照合済みです。";
-  document.getElementById("sourceLink").href="https://ameblo.jp/gensan2155/entry-12767988422.html";
-  document.getElementById("sourceLink").textContent="R3実問題の保存元を開く";
+  document.getElementById("sourceNotice").innerHTML=is2
+    ?"<b>第46回に出題された保存問題です。</b> 問題本文を元資料から整形して表示。正答は別資料の60問と照合済み。詳細解説は未検証です。"
+    :"<b>第47回に実際に出題された問題です。</b> 保存されている実問題本文を読みやすく整形して表示しています。正答は別資料と60問照合済みです。";
+  document.getElementById("sourceLink").href=is2
+    ?"https://ameblo.jp/gensan2155/entry-12768003510.html"
+    :"https://ameblo.jp/gensan2155/entry-12767988422.html";
+  document.getElementById("sourceLink").textContent=is2?"R2実問題の保存元を開く":"R3実問題の保存元を開く";
   document.getElementById("viewerNote").textContent="問"+x.q+"を表示中。本文・選択肢は保存資料から収録。";
  }
  document.getElementById("reveal").classList.remove("show");
