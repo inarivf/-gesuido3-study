@@ -51,8 +51,12 @@ review=read_json("research/explanation_review_v001.json")
 reviewed={item["id"] for item in review["reviewed"]}
 holds={item["id"] for item in review["holds"]}
 assert holds==set(HOLD_IDS),f"Unexpected held questions: {sorted(holds)}"
-assert len(reviewed)==20 and not reviewed.intersection(holds)
+assert len(reviewed)==23 and not reviewed.intersection(holds)
 assert all(x in all_ids for x in holds|reviewed)
+r3_review=read_json("research/r3_explanation_review_v001.json")
+r3_reviewed={r["id"] for r in r3_review["reviewed"]}
+assert r3_reviewed=={"R3-01","R3-03","R3-08","R3-09"}
+assert all(x in all_ids for x in r3_reviewed)
 
 # The existing two attempted repairs are transparent but should never be
 # mistaken for a direct R2-official-original comparison.
@@ -96,6 +100,7 @@ report={
  "excluded_from_grading":list(HOLD_IDS),
  "current_grading_pool":EXAM_TOTAL-len(holds),
  "r2_independently_reviewed_explanations":len(reviewed),
+ "r3_independently_reviewed_explanations":len(r3_reviewed),
  "archival_repairs_without_direct_r2_official_comparison":list(REPAIRED_IDS),
  "r2_archival_table_warning":"R2-43",
  "arithmetic_checks":list(math_checks),
@@ -111,9 +116,9 @@ report={
    "R2-17 and R2-36 have non-official archival text repairs; the arithmetic check cannot validate the historical original wording.",
    "R2 held six questions are excluded from graded study; still visible in reference-only mode.",
    "R3 and R2 archive wordings and all 240 published-question reuse conditions have not undergone a complete manual review.",
-   "Only twenty R2 rationales have independent additional explanation review; the remaining explanations are not all audited."
+   "Only twenty-three R2 rationales and four R3 rationales have independent additional explanation review; the remaining explanations are not all audited."
  ]
 }
 out=ROOT/"research/question_integrity_audit_v001.json"
 out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-print("QUESTION_INTEGRITY_PASS: 240 source rows, 6 holds, 2 repaired-wording warnings, 6 arithmetic checks, 20 reviewed R2 explanations")
+print("QUESTION_INTEGRITY_PASS: 240 source rows, 6 holds, 2 repaired-wording warnings, 6 arithmetic checks, 23 reviewed R2 explanations, 4 R3 explanations")
