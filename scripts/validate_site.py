@@ -123,11 +123,11 @@ if not errors:
             fail(f"R2 Q{n} missing original-source warning")
     # The explanation overlay must change rationale only, never original questions or answers.
     reviews=json.loads((ROOT/"research/explanation_review_v001.json").read_text(encoding="utf-8"))
-    assert len(reviews["reviewed"])==8 and len(reviews["holds"])==3
+    assert len(reviews["reviewed"])==18 and len(reviews["holds"])==6
     html=(ROOT/"index.html").read_text(encoding="utf-8")
     required=[
-        "studyRecommendation","explanationAuditNote","explanationReferences",
-        "v1.9","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
+        "studyRecommendation","explanationAuditNote","explanationReferences","reviewedCount","holdCount",
+        "v1.10","実過去問240問","R7_QUESTIONS","R6_QUESTIONS","R3_QUESTIONS","R2_QUESTIONS",
         "startMode('random20')","startMode('weak')","startMode('mock')",
         "./r7_questions/q-","./r6_questions/q-","gesuido3_progress_v1"
     ]
@@ -173,4 +173,4 @@ if errors:
     print("VALIDATION FAILED")
     for e in errors: print(" -",e)
     sys.exit(1)
-print("VALIDATION PASS: v1.9, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
+print("VALIDATION PASS: v1.10, 240 questions, identity/answer keys checked, R3/R2 stems/choices checked, one-question views R7 60/60 + R6 60/60")
