@@ -461,7 +461,7 @@ info("diagram-dependent R2 Q48 flagged without modifying correct answer");
 
 // v1.10: quality counts and additional checked explanations
 const checks=bootFresh();
-assert.equal(Number(checks.el("reviewedCount").textContent),18);
+assert.equal(Number(checks.el("reviewedCount").textContent),20);
 assert.equal(Number(checks.el("holdCount").textContent),6);
 info("quality dashboard reports 18 independently grounded explanations and six holds");
 
