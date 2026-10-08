@@ -463,20 +463,24 @@ function render(){
   document.getElementById("sourceLink").textContent=is2?"R2実問題の保存元を開く":"R3実問題の保存元を開く";
   document.getElementById("viewerNote").textContent="問"+x.q+"を表示中。本文・選択肢は保存資料から収録。";
  }
- if(x.sourceWarning||x.explanationWarning){
+ if(x.sourceWarning||x.explanationWarning||isReferenceOnly(x)){
   const note=document.getElementById("sourceNotice");
   if(x.sourceWarning)
    note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 元資料の転記に注意：</b> '+escapeHtml(x.sourceWarning)+'</div>';
   if(x.explanationWarning)
-   note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 参考問題（原本確認待ち）：</b> '+escapeHtml(x.explanationWarning)+'</div>';
+   note.innerHTML+='<div style="margin-top:8px;border-top:1px solid #ead17a;padding-top:7px"><b>⚠️ 参考問題（原本確認待ち・採点対象外）：</b> '+escapeHtml(x.explanationWarning)+'</div>';
+  if(isReferenceOnly(x))
+   note.innerHTML+='<div style="margin-top:8px"><b>この問題は成績に一切加算しません。</b> 保存正答番号も原本確定まで参考にしてください。</div>';
  }
  document.getElementById("reveal").classList.remove("show");
  document.getElementById("explanationAuditNote").textContent="";
- document.querySelectorAll(".choice").forEach(b=>{b.className="choice";b.disabled=mockFinished});
+ document.querySelectorAll(".choice").forEach(b=>{b.className="choice";b.disabled=mockFinished||sessionMode==="reference"});
  document.getElementById("prevBtn").disabled=pos===0;
  document.getElementById("nextBtn").disabled=pos===session.length-1;
  const recorded=sessionAnswers[x.id];
- if(sessionMode==="mock"&&!mockFinished){
+ if(sessionMode==="reference"){
+  showFeedback(x,null);
+ }else if(sessionMode==="mock"&&!mockFinished){
   if(recorded)document.querySelector('.choice[data-a="'+recorded.choice+'"]').classList.add("selected");
  }else if(recorded){
   showFeedback(x,recorded.choice);
@@ -485,6 +489,19 @@ function render(){
  setTimeout(()=>document.getElementById("quizCard").scrollIntoView({behavior:"smooth",block:"start"}),50);
 }
 function showFeedback(x,choice){
+ if(isReferenceOnly(x)){
+  document.querySelectorAll(".choice").forEach(b=>b.disabled=true);
+  document.getElementById("correctLine").textContent="⚠️ 原本確認待ち・採点対象外";
+  document.getElementById("explain").textContent=x.explanationWarning||"原本の表記または図表の確認待ちです。";
+  document.getElementById("trap").textContent="保存正答番号を確定した正解として暗記しないでください。";
+  document.getElementById("memo").textContent="参考表示のみ。得点・弱点履歴は変化しません。";
+  document.getElementById("explanationAuditNote").textContent="原資料の表記・図表が未確定のため参考扱い。通常の成績には反映しません。";
+  document.getElementById("explanationReferences").classList.add("hidden");
+  document.getElementById("explanationReferences").innerHTML="";
+  document.getElementById("formula").classList.add("hidden");
+  document.getElementById("reveal").classList.add("show");
+  return;
+ }
  const ok=choice===x.answer;
  document.querySelector('.choice[data-a="'+x.answer+'"]').classList.add("correct");
  if(!ok)document.querySelector('.choice[data-a="'+choice+'"]').classList.add("wrong");
@@ -517,8 +534,11 @@ function showFeedback(x,choice){
  document.getElementById("reveal").classList.add("show");
 }
 function answer(a){
- if(mockFinished||answeredCurrent||!session.length)return;
+ if(mockFinished||answeredCurrent||!session.length||sessionMode==="reference")return;
  const x=q(),ok=a===x.answer;
+ if(isReferenceOnly(x)&&sessionMode!=="mock"){
+  answeredCurrent=true;showFeedback(x,null);return;
+ }
  if(sessionMode==="mock"){
   sessionAnswers[x.id]={choice:a};
   document.querySelectorAll(".choice").forEach(b=>b.classList.toggle("selected",Number(b.dataset.a)===a));
@@ -546,6 +566,7 @@ function finishMock(reason){
  let correct=0,wrong=0;
  const wrongIds=[],blankIds=[];
  for(const x of session){
+  if(isReferenceOnly(x))continue;
   const rec=sessionAnswers[x.id];
   if(!rec){blankIds.push(x.id);continue}
   const ok=rec.choice===x.answer;
@@ -554,24 +575,26 @@ function finishMock(reason){
   s.attempts++;s.lastChoice=rec.choice;s.lastCorrect=ok;
   if(ok){correct++;s.correct++}else{wrong++;s.wrong++;s.rating="ng"}
  }
- const blank=session.length-correct-wrong;
+ const total=gradedTotal(session[0].year);
+ const excluded=session.length-total;
+ const blank=total-correct-wrong;
  const finished={
   runKey:mockRunKey,year:session[0].year,finishedAt:new Date().toISOString(),
-  score:correct,total:session.length,wrongIds,blankIds,
+  score:correct,total,wrongIds,blankIds,
   reason:reason==="time"?"time":"manual"
  };
  state.mockHistory=[finished,...(Array.isArray(state.mockHistory)?state.mockHistory:[]).filter(r=>r.runKey!==mockRunKey)].slice(0,MAX_MOCK_HISTORY);
  state.lastGradedMockKey=mockRunKey;
  document.getElementById("mockRetryWrong").classList.toggle("hidden",wrongIds.length===0);
  const result=document.getElementById("mockResult");
- result.textContent="模試結果："+correct+" / "+session.length+"点　誤答："+wrong+"問　未回答："+blank+"問"+(reason==="time"?"（制限時間終了）":"");
+ result.textContent="模試結果："+correct+" / "+total+"点　誤答："+wrong+"問　未回答："+blank+"問"+(excluded?"　※原本確認待ち"+excluded+"問は採点対象外（参考模試）":"")+(reason==="time"?"（制限時間終了）":"");
  result.classList.remove("hidden");
  save();
  clearMockDraft();
  render();
 }
 function rate(r){
- if(!session.length||!sessionAnswers[q().id]||(sessionMode==="mock"&&!mockFinished))return;
+ if(!session.length||isReferenceOnly(q())||!sessionAnswers[q().id]||(sessionMode==="mock"&&!mockFinished))return;
  const x=q(),s=itemState(x.id);s.rating=r;save();
  toast(r==="ok"?"覚えたにしました":r==="maybe"?"怪しいにしました":"弱点にしました");
 }
@@ -580,6 +603,7 @@ function jumpQuestion(){
  if(!session.length)return;
  const x=q(),n=Number(document.getElementById("jumpSelect").value),target=SETS[x.year].find(z=>z.q===n);
  if(!target)return;
+ if(isReferenceOnly(target)&&sessionMode!=="reference"){toast("この問題は「原本確認待ち6問を見る」で確認できます");return}
  const idx=session.findIndex(z=>z.id===target.id);
  if(idx>=0){pos=idx;if(sessionMode==="mock"&&!mockFinished)saveMockDraft();render();return}
  if(sessionMode==="mock"&&!mockFinished){toast("模試中は別の演習へ移動できません");return}
@@ -623,12 +647,12 @@ function renderMockHistory(){
   return;
  }
  box.innerHTML=history.slice(0,10).map((rec,i)=>{
-  const prev=history.slice(i+1).find(p=>p.year===rec.year);
+  const prev=history.slice(i+1).find(p=>p.year===rec.year&&p.total===rec.total);
   const diff=prev?'　前回比：'+(rec.score-prev.score>0?'+':'')+(rec.score-prev.score)+'点':"　初回";
   const date=new Date(rec.finishedAt);
   const stamp=Number.isFinite(date.getTime())?date.toLocaleString("ja-JP"):"日時不明";
   const pct=Math.round(rec.score/rec.total*100);
-  return '<div class="exam-record"><div class="exam-top"><b>'+escapeHtml(rec.year)+'　'+rec.score+'/'+rec.total+'点</b><span class="exam-details">'+escapeHtml(stamp)+escapeHtml(diff)+'</span></div>'+
+  return '<div class="exam-record"><div class="exam-top"><b>'+escapeHtml(rec.year)+(rec.year==="R2"?'（参考）':'')+'　'+rec.score+'/'+rec.total+'点</b><span class="exam-details">'+escapeHtml(stamp)+escapeHtml(diff)+'</span></div>'+
    '<div class="exam-track"><i style="width:'+pct+'%"></i></div>'+
    '<div class="exam-details">誤答：'+rec.wrongIds.length+'問　未回答：'+rec.blankIds.length+'問'+
    (rec.reason==="time"?'　時間切れ':'')+'</div>'+
@@ -640,7 +664,7 @@ function startMistakeReview(index=0){
  const history=Array.isArray(state.mockHistory)?state.mockHistory:[];
  const rec=history[index];
  if(!rec||!Array.isArray(rec.wrongIds))return toast("復習する模試記録がありません");
- const questions=rec.wrongIds.map(id=>QUESTION_BY_ID.get(id)).filter(Boolean);
+ const questions=rec.wrongIds.map(id=>QUESTION_BY_ID.get(id)).filter(x=>x&&!isReferenceOnly(x));
  if(!questions.length)return toast("この模試は誤答がありません！");
  const draft=getPendingMock();
  if((draft||sessionMode==="mock"&&!mockFinished)
@@ -743,7 +767,7 @@ function validateMockHistory(value){
   if(typeof runKey!=="string"||runKey.length<5||runKey.length>120||seen.has(runKey))
     throw new Error("模試履歴の識別子が不正です");
   seen.add(runKey);
-  if(!["R7","R6","R3","R2"].includes(year)||total!==60||!Number.isInteger(score)||score<0||score>60)
+  if(!["R7","R6","R3","R2"].includes(year)||!(total===60||(year==="R2"&&total===54))||!Number.isInteger(score)||score<0||score>total)
     throw new Error("模試の年度・得点が不正です");
   if(typeof finishedAt!=="string"||!Number.isFinite(Date.parse(finishedAt)))
     throw new Error("模試の日付が不正です");
@@ -756,7 +780,7 @@ function validateMockHistory(value){
      throw new Error("模試の問題番号が不正または重複しています");
    used.add(id);
   }
-  if(score+wrongIds.length+blankIds.length!==60)throw new Error("模試の得点と誤答数が一致しません");
+  if(score+wrongIds.length+blankIds.length!==total)throw new Error("模試の得点と誤答数が一致しません");
   return {runKey,year,finishedAt,score,total,wrongIds:[...wrongIds],blankIds:[...blankIds],reason};
  });
 }
