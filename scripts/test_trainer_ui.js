@@ -596,6 +596,15 @@ assert(legal.el("explain").textContent.includes("国及び地方公共団体"));
 assert(legal.el("explanationReferences").innerHTML.includes("345AC0000000137"));
 info("R3 Q8 independently checked waste-law responsibility clause");
 
-console.log("UI REGRESSION PASS: 42 scenarios");
+// v1.15: switching from an answered law question to a fresh item must
+// scrub both the hidden answer content and the prior evidence links.
+legal.run('session=[QUESTION_BY_ID.get("R3-02")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+assert.equal(legal.el("explain").textContent,"");
+assert.equal(legal.el("explanationReferences").innerHTML,"");
+assert(legal.el("explanationReferences").classList.contains("hidden"));
+assert(legal.el("reveal").classList.contains("show")===false);
+info("answer and source links are cleared on transition to an unattempted question");
+
+console.log("UI REGRESSION PASS: 43 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
