@@ -461,10 +461,10 @@ info("diagram-dependent R2 Q48 flagged without modifying correct answer");
 
 // v1.10: quality counts and additional checked explanations
 const checks=bootFresh();
-assert.equal(Number(checks.el("reviewedCount").textContent),43);
-assert.equal(Number(checks.el("draftCount").textContent),26);
+assert.equal(Number(checks.el("reviewedCount").textContent),54);
+assert.equal(Number(checks.el("draftCount").textContent),17);
 assert.equal(Number(checks.el("holdCount").textContent),6);
-info("quality dashboard reports 43 independently grounded explanations and six holds");
+info("quality dashboard reports 54 independently grounded explanations and six holds");
 
 checks.run('session=[QUESTION_BY_ID.get("R2-09")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
 checks.run("answer(3)");
@@ -627,12 +627,12 @@ for(const [id,answer,expected,evidence] of [
 }
 // v1.17: full R2 coverage, verified versus unverified draft boundaries.
 const bulk=bootFresh();
-assert.equal(bulk.run('ALL.filter(x=>x.year==="R2" && x.reviewStatus==="source_checked").length + ALL.filter(x=>x.year==="R2"&&x.reviewStatus==="calculation_checked").length'),28);
-assert.equal(bulk.run('ALL.filter(x=>x.year==="R2"&&x.reviewStatus==="explanation_draft").length'),26);
+assert.equal(bulk.run('ALL.filter(x=>x.year==="R2" && x.reviewStatus==="source_checked").length + ALL.filter(x=>x.year==="R2"&&x.reviewStatus==="calculation_checked").length'),37);
+assert.equal(bulk.run('ALL.filter(x=>x.year==="R2"&&x.reviewStatus==="explanation_draft").length'),17);
 assert.equal(bulk.run('ALL.filter(x=>x.year==="R2"&&isReferenceOnly(x)).length'),6);
-assert.equal(Number(bulk.el("reviewedCount").textContent),43);
-assert.equal(Number(bulk.el("draftCount").textContent),26);
-info("R2 coverage: 28 verified, 26 unverified drafts, 6 reference-only source holds");
+assert.equal(Number(bulk.el("reviewedCount").textContent),54);
+assert.equal(Number(bulk.el("draftCount").textContent),17);
+info("R2 coverage: 37 verified, 17 unverified drafts, 6 reference-only source holds");
 
 for(const [id,answer,support] of [
   ["R3-06",2,"7.5kW"],
@@ -658,10 +658,8 @@ info("11 added R2/R3 statute and safety explanations display evidence after answ
 
 for(const [id,answer,keyword] of [
   ["R2-18",2,"酸素消費"],
-  ["R2-21",4,"間接加熱式"],
   ["R2-29",4,"汚泥発生量"],
   ["R2-41",4,"転記崩れ"],
-  ["R2-56",2,"閉路"],
 ]){
   bulk.run('session=[QUESTION_BY_ID.get("'+id+'")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
   if(id==="R2-41")assert(bulk.el("sourceNotice").innerHTML.includes("元文の要確認箇所"));
@@ -670,12 +668,37 @@ for(const [id,answer,keyword] of [
   assert(bulk.el("explanationAuditNote").textContent.includes("解説案"),id+" draft falsely marked verified");
   assert.equal(bulk.el("explanationReferences").innerHTML,"",id+" draft should not invent sources");
 }
-info("26 R2 provisional explanations are labeled as unverified and supply no fake references");
+info("17 R2 provisional explanations are labeled as unverified and supply no fake references");
 bulk.run('session=[QUESTION_BY_ID.get("R2-15")];pos=0;sessionMode="reference";sessionAnswers=Object.create(null);render()');
 assert(bulk.el("sourceNotice").innerHTML.includes("採点対象外"));
 assert(bulk.el("explanationAuditNote").textContent.includes("参考扱い"));
 info("R2 six original-text holds remain reference-only after batch expansion");
 
-console.log("UI REGRESSION PASS: 52 scenarios");
+// v1.18: nine newly grounded R2 explanations and two R3 safety explanations.
+const promotion=bootFresh();
+for(const [id,ans,match,ref] of [
+ ["R2-12",2,"DO（溶存酸素）","jswa.go.jp"],
+ ["R2-21",4,"脱臭対象","jswa.go.jp"],
+ ["R2-25",2,"機械濃縮","pwri.go.jp"],
+ ["R2-34",1,"定量値","mlit.go.jp"],
+ ["R2-38",4,"効率的な運転","mlit.go.jp"],
+ ["R2-39",1,"3,000","jswa.go.jp"],
+ ["R2-44",4,"CST","patents.google.com"],
+ ["R2-50",3,"本管内","yokohama.lg.jp"],
+ ["R2-56",2,"開路","meti.go.jp"],
+ ["R3-45",1,"嫌気性消化","jswa.go.jp"],
+ ["R3-54",2,"硫化水素","mlit.go.jp"],
+]){
+ promotion.run('session=[QUESTION_BY_ID.get("'+id+'")];pos=0;sessionMode="jump";sessionAnswers=Object.create(null);render()');
+ assert(promotion.el("explanationReferences").classList.contains("hidden"),id+" leaked link before answer");
+ promotion.run("answer("+ans+")");
+ assert(promotion.el("explain").textContent.includes(match),id+" missing verified rationale");
+ assert(promotion.el("explanationAuditNote").textContent.includes("内容確認済み"),id+" still marked draft");
+ assert(promotion.el("explanationReferences").innerHTML.includes(ref),id+" missing matched source link");
+}
+assert.equal(promotion.run('ALL.filter(x=>x.year==="R2"&&isReferenceOnly(x)).length'),6);
+assert.equal(promotion.run('gradedTotal("R2")'),54);
+info("11 independently checked R2/R3 explanations and original reference-only grading protections");
+console.log("UI REGRESSION PASS: 53 scenarios");
 })().catch(e=>{console.error(e);process.exitCode=1});
 
