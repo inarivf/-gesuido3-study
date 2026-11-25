@@ -87,6 +87,12 @@ jobs:
             echo "No generated changes"
             exit 0
           fi
+          # Fail cleanly if main advanced during a long build. Never
+          # overwrite another publish or leave a conflicted rebase.
+          git fetch origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "Repository advanced during build; restart this workflow on the latest main" >&2
+            exit 1
+          fi
           git commit -m "Build 下3 trainer v1.18 eleven evidence-grounded explanation upgrades"
-          git pull --rebase origin main
           git push
