@@ -55,7 +55,7 @@ jobs:
       - name: Audit 240 archived question structures and source warnings
         run: python3 scripts/audit_question_integrity.py
 
-      - name: Build v1.17
+      - name: Build v1.18
         run: python3 scripts/build_site.py
 
       - name: Validate 240 questions and one-question views
@@ -87,6 +87,6 @@ jobs:
             echo "No generated changes"
             exit 0
           fi
-          git commit -m "Build 下3 trainer v1.17 bulk R2 learning explanations with evidence boundaries"
+          git commit -m "Build 下3 trainer v1.18 eleven evidence-grounded explanation upgrades"
           git pull --rebase origin main
           git push
